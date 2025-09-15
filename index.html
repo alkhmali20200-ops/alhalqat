@@ -974,3 +974,64 @@
           </div>
           <div class="bg-yellow-50 font-bold p-2 text-center grid grid-cols-1 sm:grid-cols-2">
             <div>حصيلة الحفظ الأسبوعية: <span class
+// استخدام تفويض أحداث صارم داخل dashboardView
+document.getElementById('dashboardView').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn || !document.getElementById('dashboardView').contains(btn)) return;
+
+  // أزرار عامة أعلى القائمة
+  if (btn.id === 'showAnalyticsBtn') { app.showAnalytics(); return; }
+  if (btn.id === 'generateReportBtn') { app.generateSectionReport(); return; }
+
+  // أزرار إنشاء كيانات
+  if (btn.id === 'addNewHalaqaBtn' && app.currentSection === 'men') { app.addNewHalaqaToMen(); return; }
+  if (btn.id === 'addNewDarBtn' && app.currentSection === 'women') { app.addNewDar(); return; }
+
+  // مطابقة دقيقة لأزرار بطاقات الحلقات (رجال)
+  if (app.currentSection === 'men') {
+    const cardBtn = e.target.closest(
+      'button.open-halaqa-btn, button.edit-halaqa-btn, button.share-halaqa-btn, button.delete-halaqa-btn'
+    );
+    if (!cardBtn) return;
+    const halaqaId = cardBtn.dataset.halaqaId;
+    if (!halaqaId) return;
+
+    if (cardBtn.classList.contains('open-halaqa-btn')) { app.openHalaqa(halaqaId); return; }
+    if (cardBtn.classList.contains('edit-halaqa-btn')) { app.editHalaqa(null, halaqaId); return; }
+    if (cardBtn.classList.contains('share-halaqa-btn')) { app.shareHalaqa(halaqaId); return; }
+    if (cardBtn.classList.contains('delete-halaqa-btn')) { app.deleteHalaqaFromMen(halaqaId); return; }
+  }
+
+  // مطابقة دقيقة لأزرار بطاقات الحلقات (نساء داخل دور)
+  if (app.currentSection === 'women') {
+    const cardBtn = e.target.closest(
+      'button.open-halaqa-btn, button.edit-halaqa-btn, button.share-halaqa-btn, button.delete-halaqa-btn, button.delete-dar-btn, button.add-halaqa-to-dar-btn'
+    );
+    if (!cardBtn) return;
+
+    // زر حذف الدار
+    if (cardBtn.classList.contains('delete-dar-btn')) {
+      const darId = cardBtn.dataset.darId;
+      if (darId) app.deleteDar(darId);
+      return;
+    }
+
+    // زر إضافة حلقة لدار
+    if (cardBtn.classList.contains('add-halaqa-to-dar-btn')) {
+      const darId = cardBtn.dataset.darId;
+      if (darId) app.addNewHalaqaToDar(darId);
+      return;
+    }
+
+    // أزرار الحلقات داخل الدار
+    const darId = cardBtn.dataset.darId;
+    const halaqaId = cardBtn.dataset.halaqaId;
+    if (!darId || !halaqaId) return;
+
+    if (cardBtn.classList.contains('open-halaqa-btn')) { app.openHalaqa(halaqaId); return; }
+    if (cardBtn.classList.contains('edit-halaqa-btn')) { app.editHalaqa(darId, halaqaId); return; }
+    if (cardBtn.classList.contains('share-halaqa-btn')) { app.shareHalaqa(halaqaId); return; }
+    if (cardBtn.classList.contains('delete-halaqa-btn')) { app.deleteHalaqaFromDar(darId, halaqaId); return; }
+  }
+});
+
