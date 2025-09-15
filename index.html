@@ -35,15 +35,18 @@
 
   <!-- تهيئة Firebase: يجب وضعها قبل سكربت التطبيق -->
   <script>
-    // استبدل هذه القيم من Firebase Console → Project settings → Your apps → Web app
+    // تم تحديث هذه البيانات بناءً على المعلومات التي قدمتها
     window.__firebase_config = JSON.stringify({
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyAsQQ9GGfZ0DmS4V5Fqv49rypXDEeoxCaA",
+      authDomain: "alhalqat-6ac9d.firebaseapp.com",
+      projectId: "alhalqat-6ac9d",
+      storageBucket: "alhalqat-6ac9d.firebasestorage.app",
+      messagingSenderId: "680568855745",
+      appId: "1:680568855745:web:b8adfa8598dfd6d801c840",
+      measurementId: "G-4L9H2WQS60"
     });
-    // اختياري: تثبيت معرف التطبيق لمسار Firestore
-    window.__app_id = "YOUR_PROJECT_ID";
+    // تم تحديث معرف التطبيق لمسار Firestore
+    window.__app_id = "alhalqat-6ac9d";
     // اختياري: إذا توفر توكن مصادقة مخصص
     // window.__initial_auth_token = "YOUR_CUSTOM_TOKEN";
   </script>
@@ -77,7 +80,7 @@
           <h2 id="listTitle" class="text-xl font-bold"></h2>
           <div class="flex gap-2">
             <button id="showAnalyticsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">📊 عرض الإحصائيات</button>
-            <button id="generateReportBtn" class="bg-teal-600 hover:bg-teال-700 text-white font-bold py-2 px-4 rounded-lg">📈 إنشاء تقرير أسبوعي للقسم</button>
+            <button id="generateReportBtn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">📈 إنشاء تقرير أسبوعي للقسم</button>
           </div>
         </div>
         <div id="listContainer"></div>
@@ -148,7 +151,7 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div><p class="text-2xl font-bold text-green-600" id="halaqaTotalMemorization">0</p><p class="text-sm text-gray-600">إجمالي أوجه الحفظ</p></div>
           <div><p class="text-2xl font-bold text-indigo-600" id="halaqaTotalReview">0</p><p class="text-sm text-gray-600">إجمالي أوجه المراجعة</p></div>
-          <div><p class="text-2xl font-bold text-teال-600" id="halaqaTotalAttendance">0</p><p class="text-sm text-gray-600">إجمالي أيام الحضور</p></div>
+          <div><p class="text-2xl font-bold text-teal-600" id="halaqaTotalAttendance">0</p><p class="text-sm text-gray-600">إجمالي أيام الحضور</p></div>
           <div><p class="text-2xl font-bold text-red-600" id="halaqaTotalAbsence">0</p><p class="text-sm text-gray-600">إجمالي أيام الغياب</p></div>
         </div>
       </div>
@@ -203,7 +206,6 @@
     </div>
   </div>
 
-  <!-- سكربت التطبيق (نفس منطقك كما هو) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -224,22 +226,39 @@
       }
 
       async initFirebase() {
-        if (typeof __firebase_config === 'undefined') {
+        if (typeof __firebase_config === 'undefined' || !__firebase_config) {
           document.getElementById('firebase-status').textContent = 'وضع المعاينة (الاتصال بقاعدة البيانات معطل)';
           this.handleDirectLinkAfterDataLoad();
           return;
         }
         try {
           const firebaseConfig = JSON.parse(__firebase_config);
+
+          if (firebaseConfig.apiKey === "YOUR_API_KEY" || !firebaseConfig.apiKey) {
+             document.getElementById('firebase-status').textContent = 'وضع المعاينة (بيانات Firebase غير مكتملة)';
+             this.handleDirectLinkAfterDataLoad(); 
+             return; 
+          }
+
           this.appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
           const app = initializeApp(firebaseConfig);
           this.db = getFirestore(app);
           const auth = getAuth(app);
+          
           if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
+            try {
+              // Attempt to sign in with the custom token
+              await signInWithCustomToken(auth, __initial_auth_token);
+            } catch (tokenError) {
+              // If the custom token is invalid for this project, fall back to anonymous sign-in
+              console.warn("Custom token sign-in failed, falling back to anonymous sign-in.", tokenError);
+              await signInAnonymously(auth);
+            }
           } else {
+            // If no custom token is provided, sign in anonymously
             await signInAnonymously(auth);
           }
+
           document.getElementById('firebase-status').textContent = 'متصل بقاعدة البيانات ✅';
           this.listenForDataChanges(this.appId);
         } catch (error) {
@@ -261,13 +280,14 @@
             this.appData = { men: data.men || [], women: data.women || [] };
           } else {
             this.appData = { men: [], women: [] };
-            this.saveData();
+            this.saveData(); // Create the initial document if it doesn't exist
           }
           if (!this.initialLinkHandled) this.handleDirectLinkAfterDataLoad();
           if (this.currentSection && document.getElementById('dashboardView').classList.contains('active')) {
             this.renderDashboard();
           }
-        }, () => {
+        }, (error) => {
+          console.error("Error listening to data:", error);
           this.halaqaManager.showMessage('حدث خطأ في المزامنة مع قاعدة البيانات', 'error');
         });
       }
@@ -329,7 +349,7 @@
             <h2 class="text-xl font-bold mb-4">إضافة حلقة جديدة</h2>
             <div class="flex flex-wrap gap-4 items-end">
               <div class="flex-grow"><label for="newHalaqaName" class="block text-sm font-medium text-gray-700">اسم الحلقة</label><input type="text" id="newHalaqaName" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="مثال: حلقة المبتدئين"></div>
-              <div class="flex-grow"><label for="newTeacherName" class="block text-sm font-medium text-gray-700">اسم المعلم/ة</label><input type="text" id="newTeacherName" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="اسم المعلم/ة المسؤول/ة"></div>
+              <div class="flex-grow"><label for="newTeacherName" class="block text-sm font-medium text-gray-700">اسم المعلم</label><input type="text" id="newTeacherName" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="اسم المعلم المسؤول"></div>
               <button id="addNewHalaqaBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">➕ إضافة</button>
             </div>`;
           listContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
@@ -404,15 +424,16 @@
 
       shareHalaqa(halaqaId) {
         try {
-          const baseUrl = window.location.href.split('#');
+          const baseUrl = window.location.href.split('#')[0];
           const shareableLink = `${baseUrl}#halaqa_id=${halaqaId}`;
           document.getElementById('shareLinkInput').value = shareableLink;
           document.getElementById('shareModal').classList.remove('hidden');
-        } catch {
+        } catch(e) {
+          console.error("Failed to create share link:", e);
           this.halaqaManager.showMessage('فشل إنشاء رابط المشاركة.', 'error');
         }
       }
-
+      
       addNewHalaqaToMen() {
         const circleName = document.getElementById('newHalaqaName').value.trim();
         const teacherName = document.getElementById('newTeacherName').value.trim();
@@ -461,7 +482,7 @@
             .catch(() => { this.appData = originalData; this.renderDashboard(); });
         }
       }
-
+      
       addNewHalaqaToDar(darId) {
         const halaqaNameInput = document.getElementById(`newHalaqaName_${darId}`);
         const teacherNameInput = document.getElementById(`newTeacherName_${darId}`);
@@ -509,8 +530,10 @@
           const saveBtn = document.getElementById('saveEditBtn');
           halaqaNameInput.value = halaqa.circleName;
           teacherNameInput.value = halaqa.teacherName;
+          
           const newSaveBtn = saveBtn.cloneNode(true);
           saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
           newSaveBtn.onclick = () => {
             const newCircleName = halaqaNameInput.value.trim();
             const newTeacherName = teacherNameInput.value.trim();
@@ -542,7 +565,7 @@
           this.showView('halaqaView');
         }
       }
-
+      
       async updateCurrentHalaqa(halaqaData) {
         if (this.currentSection === 'men') {
           const idx = this.appData.men.findIndex(h => h.id === this.currentHalaqaId);
@@ -555,7 +578,7 @@
         }
         await this.saveData();
       }
-
+      
       showAnalytics() {
         const sectionName = this.currentSection === 'men' ? 'قسم الرجال' : 'قسم النساء';
         document.getElementById('analyticsTitle').textContent = `إحصائيات أداء الحلقات في ${sectionName}`;
@@ -606,9 +629,9 @@
         const chartImage = window.myHalaqaChart.toBase64Image();
         const chartData = window.myHalaqaChart.data;
         let tableHtml = `<table border="1" style="border-collapse: collapse; width: 100%; text-align: right; font-family: sans-serif;">
-          <thead><tr><th>الحلقة</th><th>${chartData.datasets.label}</th><th>${chartData.datasets[1].label}</th><th>${chartData.datasets.label}</th></tr></thead><tbody>`;
+          <thead><tr><th>الحلقة</th><th>${chartData.datasets[0].label}</th><th>${chartData.datasets[1].label}</th><th>${chartData.datasets[2].label}</th></tr></thead><tbody>`;
         chartData.labels.forEach((label, index) => {
-          tableHtml += `<tr><td>${label}</td><td>${chartData.datasets.data[index]}</td><td>${chartData.datasets[1].data[index]}</td><td>${chartData.datasets.data[index]}</td></tr>`;
+          tableHtml += `<tr><td>${label}</td><td>${chartData.datasets[0].data[index]}</td><td>${chartData.datasets[1].data[index]}</td><td>${chartData.datasets[2].data[index]}</td></tr>`;
         });
         tableHtml += `</tbody></table>`;
         const htmlContent = `
@@ -626,7 +649,7 @@
         link.click();
         document.body.removeChild(link);
       }
-
+      
       generateSectionReport() {
         let sectionHalaqas = [];
         let sectionName = '';
@@ -688,15 +711,15 @@
         document.getElementById('exportBtn').addEventListener('click', () => this.exportHalaqaToCSV());
         document.getElementById('printSummaryBtn').addEventListener('click', () => this.printHalaqaSummary());
         document.getElementById('newStudentName').addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addStudent(); });
-        document.getElementById('halaqaView').addEventListener('input', () => {
-          this.showMessage('جاري الحفظ...', 'info');
-          clearTimeout(this.debounceTimer);
-          this.debounceTimer = setTimeout(() => {
-            this.captureAndSaveHalaqa().then(() => this.showMessage('تم الحفظ بنجاح!', 'success'));
-          }, 1500);
+        document.getElementById('halaqaView').addEventListener('input', (e) => {
+          if(e.target.closest('.student-content') || e.target.closest('.border-2')) {
+            this.showMessage('جاري الحفظ...', 'info');
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => {
+              this.captureAndSaveHalaqa().then(() => this.showMessage('تم الحفظ بنجاح!', 'success'));
+            }, 1500);
+          }
         });
-
-        // أحداث عامة موجودة خارج الصف في الملف الأصلي ستبقى كما هي أسفل الملف
       }
 
       calculateHalaqaTotals(halaqa) {
@@ -716,12 +739,19 @@
       }
 
       getHijriDateParts() {
-        const today = new Date();
-        const yearFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { year: 'numeric' });
-        const monthFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { month: 'long' });
-        const year = yearFormatter.format(today).replace(/\s*هـ.*/, '');
-        const monthName = monthFormatter.format(today);
-        return { year, monthName };
+        try {
+            const today = new Date();
+            const yearFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { year: 'numeric' });
+            const monthFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { month: 'long' });
+            const year = yearFormatter.format(today).replace(/\s*هـ.*/, '');
+            const monthName = monthFormatter.format(today);
+            return { year, monthName };
+        } catch(e) {
+            console.warn("Could not get Hijri date, falling back to Gregorian month.");
+            const gMonth = new Date().toLocaleString('ar-SA', { month: 'long'});
+            const gYear = new Date().getFullYear();
+            return { year: gYear, monthName: gMonth};
+        }
       }
 
       loadHalaqa(halaqaData) {
@@ -745,7 +775,7 @@
           this.createStudentTab(student);
           this.createStudentContentWithData(student);
         });
-        if (this.currentHalaqa.students && this.currentHalaqa.students.length > 0) this.switchToStudent(this.currentHalaqa.students.id);
+        if (this.currentHalaqa.students && this.currentHalaqa.students.length > 0) this.switchToStudent(this.currentHalaqa.students[0].id);
         else this.currentStudentId = null;
       }
 
@@ -757,13 +787,13 @@
         (this.currentHalaqa.students || []).forEach(student => this.captureStudentData(student.id));
         await this.app.updateCurrentHalaqa(this.currentHalaqa);
       }
-
+      
       addStudent() {
         const nameInput = document.getElementById('newStudentName');
         const studentName = nameInput.value.trim();
         if (!studentName) return this.showMessage('يرجى إدخال اسم الطالب', 'warning');
         if (!this.currentHalaqa.studentIdCounter) this.currentHalaqa.studentIdCounter = (this.currentHalaqa.students || []).length + 1;
-        const studentId = `student_${this.currentHalaqa.studentIdCounter++}`;
+        const studentId = `student_${this.currentHalaqa.id}_${this.currentHalaqa.studentIdCounter++}`;
         const newStudent = {
           id: studentId, name: studentName,
           grade: document.getElementById('newStudentGrade').value.trim(),
@@ -788,14 +818,14 @@
           document.getElementById(`tab_${studentId}`).remove();
           document.getElementById(`content_${studentId}`).remove();
           if (this.currentStudentId === studentId) {
-            this.currentStudentId = this.currentHalaqa.students.length > 0 ? this.currentHalaqa.students.id : null;
+            this.currentStudentId = this.currentHalaqa.students.length > 0 ? this.currentHalaqa.students[0].id : null;
             if (this.currentStudentId) this.switchToStudent(this.currentStudentId);
           }
           this.captureAndSaveHalaqa();
           this.showMessage(`تم حذف الطالب: ${studentName}`, 'warning');
         }
       }
-
+      
       switchToStudent(studentId) {
         if (!this.currentHalaqa || !this.currentHalaqa.students.find(s => s.id === studentId)) return;
         this.currentStudentId = studentId;
@@ -810,7 +840,7 @@
         const student = this.currentHalaqa.students.find(s => s.id === this.currentStudentId);
         if (student) {
           if (!student.data.weeks) student.data.weeks = [];
-          student.data.weeks.push({ days: Array(4).fill({}) });
+          student.data.weeks.push({ days: Array(4).fill({}).map(() => ({ date: this.getHijriDateString(new Date()) })) });
           const weeksContainer = document.getElementById(`weeks_${this.currentStudentId}`);
           const newWeekData = student.data.weeks[student.data.weeks.length - 1];
           weeksContainer.insertAdjacentHTML('beforeend', this.createWeekTableWithData(student.id, newWeekData, student.data.weeks.length));
@@ -832,7 +862,7 @@
         tab.appendChild(deleteBtn);
         tabsContainer.appendChild(tab);
       }
-
+      
       createStudentContentWithData(student) {
         const contentContainer = document.getElementById('studentsContentContainer');
         const studentDiv = document.createElement('div');
@@ -859,10 +889,15 @@
           </div>`;
         contentContainer.appendChild(studentDiv);
       }
-
+      
       getHijriDateString(date) {
-        const formatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        return formatter.format(date).replace(/\s*هـ.*/, '');
+        try {
+            const formatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            return formatter.format(date).replace(/\s*هـ.*/, '');
+        } catch(e) {
+            console.warn("Could not format Hijri date, falling back to Gregorian.");
+            return date.toLocaleDateString('ar-SA');
+        }
       }
 
       createWeekTableWithData(studentId, weekData, weekNumber) {
@@ -890,13 +925,12 @@
 
         const mobileDayCards = days.map((day, dayIndex) => {
           const dayData = weekData.days?.[dayIndex] || {};
-          const hijriDateString = this.getHijriDateString(new Date());
           return `
           <div class="border-b-2 border-gray-200 p-3 last:border-b-0">
             <div class="flex justify-between items-center mb-4">
               <h5 class="font-bold text-lg text-blue-800">${day}</h5>
               <div class="w-1/2">
-                ${createTextField(dayIndex, 'date', '', dayData.date || hijriDateString)}
+                ${createTextField(dayIndex, 'date', '', dayData.date || this.getHijriDateString(new Date()))}
               </div>
             </div>
             <div class="mb-4">
@@ -932,10 +966,9 @@
 
         const desktopDayRows = days.map((day, dayIndex) => {
           const dayData = weekData.days?.[dayIndex] || {};
-          const hijriDateString = this.getHijriDateString(new Date());
           return `<tr>
             <td class="border p-2 font-bold bg-gray-50">${day}</td>
-            <td class="border p-1">${createTextField(dayIndex, 'date', '', dayData.date || hijriDateString)}</td>
+            <td class="border p-1">${createTextField(dayIndex, 'date', '', dayData.date || this.getHijriDateString(new Date()))}</td>
             <td class="border p-1">${createAttendanceSelect(dayIndex, 'attendance', dayData.attendance)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'hifdhSurah', 'السورة', dayData.hifdhSurah)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'hifdhFrom', 'آية', dayData.hifdhFrom)}</td>
@@ -951,7 +984,7 @@
           </tr>`;
         }).join('');
 
-        return `<div class="week-table mb-8 border border-gray-400 rounded-lg overflow-hidden">
+        return `<div class="week-table mb-8 border border-gray-400 rounded-lg overflow-hidden" data-week-number="${weekNumber}">
           <h4 class="font-bold p-2 bg-gray-100 text-center">الأسبوع ${weekNumber}</h4>
           <div class="block md:hidden">${mobileDayCards}</div>
           <div class="hidden md:block">
@@ -972,66 +1005,209 @@
               </table>
             </div>
           </div>
-          <div class="bg-yellow-50 font-bold p-2 text-center grid grid-cols-1 sm:grid-cols-2">
-            <div>حصيلة الحفظ الأسبوعية: <span class
-// استخدام تفويض أحداث صارم داخل dashboardView
-document.getElementById('dashboardView').addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if (!btn || !document.getElementById('dashboardView').contains(btn)) return;
+        </div>`;
+      }
+      
+      captureStudentData(studentId) {
+          const student = this.currentHalaqa.students.find(s => s.id === studentId);
+          if (!student) return;
 
-  // أزرار عامة أعلى القائمة
-  if (btn.id === 'showAnalyticsBtn') { app.showAnalytics(); return; }
-  if (btn.id === 'generateReportBtn') { app.generateSectionReport(); return; }
+          const studentContent = document.getElementById(`content_${studentId}`);
+          if (!studentContent) return;
 
-  // أزرار إنشاء كيانات
-  if (btn.id === 'addNewHalaqaBtn' && app.currentSection === 'men') { app.addNewHalaqaToMen(); return; }
-  if (btn.id === 'addNewDarBtn' && app.currentSection === 'women') { app.addNewDar(); return; }
+          student.data.weeks = [];
+          const weekTables = studentContent.querySelectorAll('.week-table');
+          
+          weekTables.forEach((weekTable, weekIndex) => {
+              const newWeek = { days: [] };
+              const inputs = weekTable.querySelectorAll('input, select, textarea');
+              
+              for(let i=0; i < 4; i++) newWeek.days.push({}); // Ensure 4 days exist
+              
+              inputs.forEach(input => {
+                  const dayIndex = parseInt(input.dataset.dayIndex, 10);
+                  const field = input.dataset.field;
+                  if (!isNaN(dayIndex) && field) {
+                      newWeek.days[dayIndex][field] = input.value;
+                  }
+              });
+              student.data.weeks.push(newWeek);
+          });
+      }
 
-  // مطابقة دقيقة لأزرار بطاقات الحلقات (رجال)
-  if (app.currentSection === 'men') {
-    const cardBtn = e.target.closest(
-      'button.open-halaqa-btn, button.edit-halaqa-btn, button.share-halaqa-btn, button.delete-halaqa-btn'
-    );
-    if (!cardBtn) return;
-    const halaqaId = cardBtn.dataset.halaqaId;
-    if (!halaqaId) return;
+      calculateAllTotals() {
+        if (!this.currentHalaqa || !this.currentHalaqa.students) return;
+        (this.currentHalaqa.students || []).forEach(student => this.captureStudentData(student.id));
 
-    if (cardBtn.classList.contains('open-halaqa-btn')) { app.openHalaqa(halaqaId); return; }
-    if (cardBtn.classList.contains('edit-halaqa-btn')) { app.editHalaqa(null, halaqaId); return; }
-    if (cardBtn.classList.contains('share-halaqa-btn')) { app.shareHalaqa(halaqaId); return; }
-    if (cardBtn.classList.contains('delete-halaqa-btn')) { app.deleteHalaqaFromMen(halaqaId); return; }
-  }
+        (this.currentHalaqa.students || []).forEach(student => {
+          let totalMemorization = 0, totalReview = 0, totalAttendance = 0, totalAbsence = 0;
+          (student.data.weeks || []).forEach(week => {
+            (week.days || []).forEach(day => {
+              totalMemorization += Number(day.hifdhFaces) || 0;
+              totalReview += Number(day.murajaaFaces) || 0;
+              if (day.attendance === 'حضر') totalAttendance++;
+              else if (day.attendance === 'غاب') totalAbsence++;
+            });
+          });
 
-  // مطابقة دقيقة لأزرار بطاقات الحلقات (نساء داخل دور)
-  if (app.currentSection === 'women') {
-    const cardBtn = e.target.closest(
-      'button.open-halaqa-btn, button.edit-halaqa-btn, button.share-halaqa-btn, button.delete-halaqa-btn, button.delete-dar-btn, button.add-halaqa-to-dar-btn'
-    );
-    if (!cardBtn) return;
+          const summaryDiv = document.getElementById(`summary_${student.id}`);
+          if (summaryDiv) {
+            summaryDiv.querySelector('.total-memorization').textContent = totalMemorization;
+            summaryDiv.querySelector('.total-review').textContent = totalReview;
+            summaryDiv.querySelector('.total-attendance').textContent = totalAttendance;
+            summaryDiv.querySelector('.total-absence').textContent = totalAbsence;
+          }
+        });
+        
+        // Calculate and display Halaqa-wide summary
+        const halaqaTotals = this.calculateHalaqaTotals(this.currentHalaqa);
+        document.getElementById('halaqaTotalMemorization').textContent = halaqaTotals.totalMemorization;
+        document.getElementById('halaqaTotalReview').textContent = halaqaTotals.totalReview;
+        document.getElementById('halaqaTotalAttendance').textContent = halaqaTotals.totalAttendance;
+        document.getElementById('halaqaTotalAbsence').textContent = halaqaTotals.totalAbsence;
+        document.getElementById('halaqaSummary').classList.remove('hidden');
 
-    // زر حذف الدار
-    if (cardBtn.classList.contains('delete-dar-btn')) {
-      const darId = cardBtn.dataset.darId;
-      if (darId) app.deleteDar(darId);
-      return;
+        this.showMessage('تم حساب جميع المجاميع بنجاح!', 'success');
+      }
+
+      generatePrintableReport() {
+        this.calculateAllTotals();
+        const originalTitle = document.title;
+        document.title = `تقرير_${this.currentHalaqa.circleName}`;
+        window.print();
+        document.title = originalTitle;
+      }
+      
+      printHalaqaSummary() {
+          const summaryContent = document.getElementById('halaqaSummary').innerHTML;
+          const halaqaInfo = `<h2 class="text-2xl font-bold text-center mb-2">${this.currentHalaqa.circleName}</h2><p class="text-center text-lg mb-6">بإشراف: ${this.currentHalaqa.teacherName}</p>`;
+          const printWindow = window.open('', '_blank');
+          printWindow.document.write(`
+              <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>ملخص الحلقة</title>
+              <script src="https://cdn.tailwindcss.com"><\/script>
+              <style>@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap'); body { font-family: 'Amiri', serif; padding: 2rem; }</style>
+              </head><body><div class="container mx-auto">${halaqaInfo}${summaryContent}</div></body></html>
+          `);
+          printWindow.document.querySelector('#printSummaryBtn').remove();
+          printWindow.document.close();
+          printWindow.onload = function() { printWindow.print(); };
+      }
+
+      exportHalaqaToCSV() {
+          this.calculateAllTotals();
+          let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM for UTF-8
+          const headers = ["اسم الطالب", "المرحلة", "السجل المدني", "إجمالي الحفظ", "إجمالي المراجعة", "أيام الحضور", "أيام الغياب"];
+          csvContent += headers.join(",") + "\r\n";
+          this.currentHalaqa.students.forEach(student => {
+              const summaryDiv = document.getElementById(`summary_${student.id}`);
+              const row = [
+                  student.name,
+                  student.grade,
+                  `'${student.civilId}`, // Prepend with ' to treat as text in Excel
+                  summaryDiv.querySelector('.total-memorization').textContent,
+                  summaryDiv.querySelector('.total-review').textContent,
+                  summaryDiv.querySelector('.total-attendance').textContent,
+                  summaryDiv.querySelector('.total-absence').textContent
+              ];
+              csvContent += row.join(",") + "\r\n";
+          });
+          const encodedUri = encodeURI(csvContent);
+          const link = document.createElement("a");
+          link.setAttribute("href", encodedUri);
+          link.setAttribute("download", `تقرير_حلقة_${this.currentHalaqa.circleName}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      }
+
+      showMessage(message, type = 'info') {
+        const statusDiv = document.getElementById('saveStatus');
+        statusDiv.textContent = message;
+        statusDiv.classList.remove('hidden', 'bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-yellow-100', 'text-yellow-800');
+        if (type === 'success') statusDiv.classList.add('bg-green-100', 'text-green-800');
+        else if (type === 'error') statusDiv.classList.add('bg-red-100', 'text-red-800');
+        else if (type === 'warning') statusDiv.classList.add('bg-yellow-100', 'text-yellow-800');
+        else statusDiv.classList.add('bg-blue-100', 'text-blue-800');
+        statusDiv.classList.remove('hidden');
+        if (type === 'success' || type === 'warning' || type === 'error') {
+            setTimeout(() => statusDiv.classList.add('hidden'), 3000);
+        }
+      }
     }
+    
+    // ============== App Initialization and Global Event Listeners ==============
+    const app = new AppManager();
 
-    // زر إضافة حلقة لدار
-    if (cardBtn.classList.contains('add-halaqa-to-dar-btn')) {
-      const darId = cardBtn.dataset.darId;
-      if (darId) app.addNewHalaqaToDar(darId);
-      return;
-    }
+    // --- View Navigation ---
+    document.getElementById('selectMenBtn').addEventListener('click', () => app.selectSection('men'));
+    document.getElementById('selectWomenBtn').addEventListener('click', () => app.selectSection('women'));
+    document.getElementById('backToSectionsBtn').addEventListener('click', () => {
+        app.currentSection = null;
+        app.showView('selectionView');
+    });
+    document.getElementById('backToDashboardBtn').addEventListener('click', () => app.showView('dashboardView'));
+    document.getElementById('backToDashboardFromAnalyticsBtn').addEventListener('click', () => app.showView('dashboardView'));
 
-    // أزرار الحلقات داخل الدار
-    const darId = cardBtn.dataset.darId;
-    const halaqaId = cardBtn.dataset.halaqaId;
-    if (!darId || !halaqaId) return;
+    // --- Modal Controls ---
+    document.getElementById('closeShareModalBtn').addEventListener('click', () => {
+        document.getElementById('shareModal').classList.add('hidden');
+    });
+    document.getElementById('copyShareLinkBtn').addEventListener('click', () => {
+        const input = document.getElementById('shareLinkInput');
+        input.select();
+        try {
+            document.execCommand('copy');
+            app.halaqaManager.showMessage('تم نسخ الرابط!', 'success');
+        } catch (err) {
+            app.halaqaManager.showMessage('فشل النسخ التلقائي.', 'error');
+        }
+    });
+    document.getElementById('closeEditModalBtn').addEventListener('click', () => {
+        document.getElementById('editModal').classList.add('hidden');
+    });
 
-    if (cardBtn.classList.contains('open-halaqa-btn')) { app.openHalaqa(halaqaId); return; }
-    if (cardBtn.classList.contains('edit-halaqa-btn')) { app.editHalaqa(darId, halaqaId); return; }
-    if (cardBtn.classList.contains('share-halaqa-btn')) { app.shareHalaqa(halaqaId); return; }
-    if (cardBtn.classList.contains('delete-halaqa-btn')) { app.deleteHalaqaFromDar(darId, halaqaId); return; }
-  }
-});
+    // --- Analytics View Controls ---
+    document.getElementById('printAnalyticsBtn').addEventListener('click', () => app.printAnalytics());
+    document.getElementById('exportAnalyticsBtn').addEventListener('click', () => app.exportAnalyticsToWord());
+
+    // --- Dashboard Event Delegation ---
+    document.getElementById('dashboardView').addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn || !document.getElementById('dashboardView').contains(btn)) return;
+    
+      // Buttons for creating entities
+      if (btn.id === 'addNewHalaqaBtn' && app.currentSection === 'men') { app.addNewHalaqaToMen(); return; }
+      if (btn.id === 'addNewDarBtn' && app.currentSection === 'women') { app.addNewDar(); return; }
+      if (btn.id === 'showAnalyticsBtn') { app.showAnalytics(); return; }
+      if (btn.id === 'generateReportBtn') { app.generateSectionReport(); return; }
+    
+      // Buttons on cards (men section)
+      if (app.currentSection === 'men') {
+        const halaqaId = btn.dataset.halaqaId;
+        if (!halaqaId) return;
+        if (btn.classList.contains('open-halaqa-btn')) { app.openHalaqa(halaqaId); return; }
+        if (btn.classList.contains('edit-halaqa-btn')) { app.editHalaqa(null, halaqaId); return; }
+        if (btn.classList.contains('share-halaqa-btn')) { app.shareHalaqa(halaqaId); return; }
+        if (btn.classList.contains('delete-halaqa-btn')) { app.deleteHalaqaFromMen(halaqaId); return; }
+      }
+    
+      // Buttons on cards (women section)
+      if (app.currentSection === 'women') {
+        const darId = btn.dataset.darId;
+        const halaqaId = btn.dataset.halaqaId;
+        
+        if (btn.classList.contains('delete-dar-btn') && darId) { app.deleteDar(darId); return; }
+        if (btn.classList.contains('add-halaqa-to-dar-btn') && darId) { app.addNewHalaqaToDar(darId); return; }
+        
+        if (!darId || !halaqaId) return;
+        if (btn.classList.contains('open-halaqa-btn')) { app.openHalaqa(halaqaId); return; }
+        if (btn.classList.contains('edit-halaqa-btn')) { app.editHalaqa(darId, halaqaId); return; }
+        if (btn.classList.contains('share-halaqa-btn')) { app.shareHalaqa(halaqaId); return; }
+        if (btn.classList.contains('delete-halaqa-btn')) { app.deleteHalaqaFromDar(darId, halaqaId); return; }
+      }
+    });
+
+  </script>
+</body>
+</html>
 
