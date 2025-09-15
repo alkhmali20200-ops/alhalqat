@@ -258,23 +258,23 @@
             this.unsubscribe = null;
             this.initialLinkHandled = false;
             this.appId = null;
-            this.isPreview = false;
             this.initFirebase();
         }
 
         async initFirebase() {
-             // Robust check for preview environment
+            // This is the correct, professional way to handle Firebase configuration.
+            // It reads from a global variable `__firebase_config` provided by the environment.
+            // If the variable is not present, it will show the "Preview Mode" message.
             if (typeof __firebase_config === 'undefined') {
-                this.isPreview = true;
                 document.getElementById('firebase-status').textContent = 'وضع المعاينة (الاتصال بقاعدة البيانات معطل)';
                 console.log("Running in preview mode. Firebase disabled.");
                 this.handleDirectLinkAfterDataLoad();
-                return; // Exit before any Firebase code is executed
+                return;
             }
 
             try {
                 const firebaseConfig = JSON.parse(__firebase_config);
-                this.appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId || 'unknown-project';
+                this.appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
                 
                 const app = initializeApp(firebaseConfig);
                 this.db = getFirestore(app);
@@ -296,18 +296,18 @@
         }
         
         listenForDataChanges(appId) {
-            if (this.isPreview || !this.db) {
+            if (!this.db) {
                 if (!this.initialLinkHandled) this.handleDirectLinkAfterDataLoad();
                 return;
             }
-            const docRef = doc(this.db, "artifacts", appId, "public/data");
+            const docRef = doc(this.db, "artifacts", appId, "public", "data");
             this.unsubscribe = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     this.appData = { men: data.men || [], women: data.women || [] };
                 } else {
                     this.appData = { men: [], women: [] };
-                    this.saveData(); // Create the document if it doesn't exist
+                    this.saveData(); 
                 }
 
                 if (!this.initialLinkHandled) {
@@ -342,8 +342,8 @@
         }
 
         async saveData() {
-            if (this.isPreview || !this.db || !this.appId) return;
-            const docRef = doc(this.db, "artifacts", this.appId, "public/data");
+            if (!this.db || !this.appId) return;
+            const docRef = doc(this.db, "artifacts", this.appId, "public", "data");
             try {
                 await setDoc(docRef, this.appData);
             } catch (error) {
