@@ -208,7 +208,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     // ===================================================================================
     // == AppManager: Handles high-level logic (views, sections, halaqa management)
@@ -222,28 +222,48 @@
             this.db = null;
             this.unsubscribe = null;
             this.initialLinkHandled = false;
+            this.appId = null;
             this.initFirebase();
         }
 
         async initFirebase() {
             try {
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-quran-app';
+                // =======================================================================
+                // == تم لصق إعدادات Firebase الخاصة بك هنا بنجاح ==
+                // =======================================================================
+                const firebaseConfig = {
+                  apiKey: "AIzaSyAsQQ9GGfZ0DmS4V5Fqv49rypXDEeoxCaA",
+                  authDomain: "alhalqat-6ac9d.firebaseapp.com",
+                  projectId: "alhalqat-6ac9d",
+                  storageBucket: "alhalqat-6ac9d.appspot.com",
+                  messagingSenderId: "680568855745",
+                  appId: "1:680568855745:web:b8adfa8598dfd6d801c840",
+                  measurementId: "G-4L9H2WQS60"
+                };
+                // =======================================================================
+                
+                this.appId = firebaseConfig.projectId;
+                
                 const app = initializeApp(firebaseConfig);
                 this.db = getFirestore(app);
                 const auth = getAuth(app);
-                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                if (token) await signInWithCustomToken(auth, token);
-                else await signInAnonymously(auth);
+                
+                await signInAnonymously(auth);
+
                 document.getElementById('firebase-status').textContent = 'متصل بقاعدة البيانات ✅';
-                this.listenForDataChanges(appId);
+                this.listenForDataChanges(this.appId);
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
                 document.getElementById('firebase-status').textContent = 'فشل الاتصال بقاعدة البيانات ❌';
+                 this.handleDirectLinkAfterDataLoad(); 
             }
         }
         
         listenForDataChanges(appId) {
+            if (!this.db) { 
+                if (!this.initialLinkHandled) this.handleDirectLinkAfterDataLoad();
+                return;
+            }
             const docRef = doc(this.db, "artifacts", appId, "public/data");
             this.unsubscribe = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -291,9 +311,8 @@
         }
 
         async saveData() {
-            if (!this.db) return;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-quran-app';
-            const docRef = doc(this.db, "artifacts", appId, "public/data");
+            if (!this.db || !this.appId) return;
+            const docRef = doc(this.db, "artifacts", this.appId, "public/data");
             try {
                 await setDoc(docRef, this.appData, { merge: true });
             } catch (error) {
