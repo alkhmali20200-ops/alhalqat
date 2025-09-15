@@ -1,15 +1,3 @@
-<script>
-window.__firebase_config = JSON.stringify({
-  apiKey: "AIzaSyAsQQ9GGfZ0DmS4V5Fqv49rypXDEeoxCaA",
-  authDomain: "alhalqat-6ac9d.firebaseapp.com", // يجب أن يأخذ القيمة الصحيحة لمشروعك فقط
-  projectId: "alhalqat-6ac9d",
-  storageBucket: "alhalqat-6ac9d.appspot.com",
-  messagingSenderId: "رقم المرسل تجده في إعدادات المشروع Firebase Console",
-  appId: "معرّف التطبيق الصحيح لمشروعك من إعدادات Firebase Console"
-});
-window.__app_id = "alhalqat-6ac9d";
-</script>
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -274,9 +262,6 @@ window.__app_id = "alhalqat-6ac9d";
         }
 
         async initFirebase() {
-            // This is the correct, professional way to handle Firebase configuration.
-            // It reads from a global variable `__firebase_config` provided by the environment.
-            // If the variable is not present, it will show the "Preview Mode" message.
             if (typeof __firebase_config === 'undefined') {
                 document.getElementById('firebase-status').textContent = 'وضع المعاينة (الاتصال بقاعدة البيانات معطل)';
                 console.log("Running in preview mode. Firebase disabled.");
@@ -488,19 +473,34 @@ window.__app_id = "alhalqat-6ac9d";
             const teacherName = document.getElementById('newTeacherName').value.trim();
             if (!circleName || !teacherName) { this.halaqaManager.showMessage('يرجى إدخال اسم الحلقة واسم المعلم', 'warning'); return; }
             const newHalaqa = { id: `men_${Date.now()}`, circleName, teacherName, month: '', students: [], studentIdCounter: 1 };
+            
+            const originalData = JSON.parse(JSON.stringify(this.appData));
             this.appData.men.push(newHalaqa);
+            this.renderDashboard();
+
             this.saveData().then(() => {
                 this.halaqaManager.showMessage('تمت الإضافة بنجاح!', 'success');
                 document.getElementById('newHalaqaName').value = '';
                 document.getElementById('newTeacherName').value = '';
+            }).catch(() => {
+                this.appData = originalData; 
+                this.renderDashboard();
             });
         }
 
         deleteHalaqaFromMen(halaqaId) {
             const halaqaIndex = this.appData.men.findIndex(h => h.id === halaqaId);
             if (halaqaIndex > -1) {
+                const originalData = JSON.parse(JSON.stringify(this.appData));
                 this.appData.men.splice(halaqaIndex, 1);
-                this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الحلقة بنجاح', 'warning'));
+                this.renderDashboard();
+
+                this.saveData().then(() => {
+                    this.halaqaManager.showMessage('تم حذف الحلقة بنجاح', 'warning');
+                }).catch(() => {
+                    this.appData = originalData;
+                    this.renderDashboard();
+                });
             }
         }
 
@@ -509,18 +509,32 @@ window.__app_id = "alhalqat-6ac9d";
             const darName = darNameInput.value.trim();
             if (!darName) { return this.halaqaManager.showMessage('يرجى إدخال اسم الدار', 'warning'); }
             const newDar = { id: `dar_${Date.now()}`, name: darName, halaqas: [] };
+            
+            const originalData = JSON.parse(JSON.stringify(this.appData));
             this.appData.women.push(newDar);
+            this.renderDashboard();
+
             this.saveData().then(() => {
                 darNameInput.value = '';
                 this.halaqaManager.showMessage('تمت إضافة الدار بنجاح', 'success');
+            }).catch(() => {
+                this.appData = originalData;
+                this.renderDashboard();
             });
         }
 
         deleteDar(darId) {
             const darIndex = this.appData.women.findIndex(d => d.id === darId);
             if (darIndex > -1) {
+                 const originalData = JSON.parse(JSON.stringify(this.appData));
                 this.appData.women.splice(darIndex, 1);
-                this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الدار بنجاح', 'warning'));
+                this.renderDashboard();
+                this.saveData().then(() => {
+                    this.halaqaManager.showMessage('تم حذف الدار بنجاح', 'warning');
+                }).catch(() => {
+                    this.appData = originalData;
+                    this.renderDashboard();
+                });
             }
         }
 
@@ -530,26 +544,40 @@ window.__app_id = "alhalqat-6ac9d";
             const circleName = halaqaNameInput.value.trim();
             const teacherName = teacherNameInput.value.trim();
             if (!circleName || !teacherName) { return this.halaqaManager.showMessage('يرجى إدخال اسم الحلقة واسم المعلمة', 'warning');}
+            
+            const originalData = JSON.parse(JSON.stringify(this.appData));
             const dar = this.appData.women.find(d => d.id === darId);
             if (dar) {
                 const newHalaqa = { id: `women_${Date.now()}`, circleName, teacherName, month: '', students: [], studentIdCounter: 1 };
                 if (!dar.halaqas) dar.halaqas = [];
                 dar.halaqas.push(newHalaqa);
+                this.renderDashboard();
+                
                 this.saveData().then(() => {
                     halaqaNameInput.value = '';
                     teacherNameInput.value = '';
                     this.halaqaManager.showMessage('تمت إضافة الحلقة بنجاح', 'success');
+                }).catch(() => {
+                    this.appData = originalData;
+                    this.renderDashboard();
                 });
             }
         }
 
         deleteHalaqaFromDar(darId, halaqaId) {
+            const originalData = JSON.parse(JSON.stringify(this.appData));
             const dar = this.appData.women.find(d => d.id === darId);
             if (dar && dar.halaqas) {
                 const halaqaIndex = dar.halaqas.findIndex(h => h.id === halaqaId);
                 if (halaqaIndex > -1) {
                     dar.halaqas.splice(halaqaIndex, 1);
-                    this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الحلقة بنجاح', 'warning'));
+                    this.renderDashboard();
+                    this.saveData().then(() => {
+                        this.halaqaManager.showMessage('تم حذف الحلقة بنجاح', 'warning');
+                    }).catch(() => {
+                        this.appData = originalData;
+                        this.renderDashboard();
+                    });
                 }
             }
         }
@@ -582,11 +610,18 @@ window.__app_id = "alhalqat-6ac9d";
                         this.halaqaManager.showMessage('الرجاء عدم ترك الحقول فارغة', 'warning');
                         return;
                     }
+
+                    const originalData = JSON.parse(JSON.stringify(this.appData));
                     halaqa.circleName = newCircleName;
                     halaqa.teacherName = newTeacherName;
+                    this.renderDashboard();
+
                     this.saveData().then(() => {
                         this.halaqaManager.showMessage('تم تعديل بيانات الحلقة بنجاح', 'success');
                         modal.classList.add('hidden');
+                    }).catch(() => {
+                         this.appData = originalData;
+                         this.renderDashboard();
                     });
                 };
                 modal.classList.remove('hidden');
