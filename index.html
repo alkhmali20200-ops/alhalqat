@@ -283,9 +283,6 @@
           if (!this.initialLinkHandled) this.handleDirectLinkAfterDataLoad();
           
           if (document.getElementById('halaqaView').classList.contains('active') && this.halaqaManager.currentHalaqa) {
-              // If inside a halaqa view, reload it to get the latest data,
-              // but be careful not to overwrite local unsaved changes.
-              // The current model (manual save) avoids this issue.
               this.openHalaqa(this.currentHalaqaId);
           } else if (this.currentSection && document.getElementById('dashboardView').classList.contains('active')) {
             this.renderDashboard();
@@ -1052,7 +1049,17 @@
               
               const currentWeekInModel = student.data.weeks[weekIndex];
               
-              const inputs = weekTable.querySelectorAll('input, select, textarea');
+              // FIX: Determine the visible view (mobile or desktop) and only query inputs from it.
+              const mobileView = weekTable.querySelector('.block.md\\:hidden');
+              const isMobileViewVisible = window.getComputedStyle(mobileView).display !== 'none';
+              
+              const activeView = isMobileViewVisible 
+                ? mobileView
+                : weekTable.querySelector('.hidden.md\\:block');
+
+              if (!activeView) return; // Safety check
+
+              const inputs = activeView.querySelectorAll('input, select, textarea');
               
               inputs.forEach(input => {
                   const dayIndex = parseInt(input.dataset.dayIndex, 10);
