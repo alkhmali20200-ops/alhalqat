@@ -19,7 +19,7 @@
       body, .container { margin: 0; padding: 0; box-shadow: none; border: none; font-size: 10px; }
       .no-print { display: none !important; }
       .view { display: none !important; }
-      #analyticsView { display: block !important; }
+      #analyticsView, #rosterView, #halaqaView { display: block !important; }
     }
     input, select, textarea { border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 8px; font-family: 'Amiri', serif; background-color: transparent; }
     .student-tab { transition: all 0.3s ease; cursor: pointer; }
@@ -78,7 +78,8 @@
       <div>
         <div class="flex flex-wrap gap-4 justify-between items-center mb-4">
           <h2 id="listTitle" class="text-xl font-bold"></h2>
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <button id="showRosterBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">📋 عرض قائمة الطلاب</button>
             <button id="showAnalyticsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">📊 عرض الإحصائيات</button>
             <button id="generateReportBtn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">📈 إنشاء تقرير أسبوعي للقسم</button>
           </div>
@@ -172,6 +173,22 @@
         <canvas id="halaqaChart"></canvas>
       </div>
     </div>
+
+    <!-- View 5: Student Roster -->
+    <div id="rosterView" class="view">
+      <div class="flex flex-wrap justify-between items-center mb-6 gap-4 no-print">
+        <h1 id="rosterTitle" class="text-3xl font-bold text-gray-700"></h1>
+        <div class="flex gap-2">
+          <button id="printRosterBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">🖨️ طباعة القائمة</button>
+          <button id="exportRosterBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">📄 تصدير (إكسل)</button>
+          <button id="backToDashboardFromRosterBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">→ العودة</button>
+        </div>
+      </div>
+      <div id="rosterContent" class="bg-white p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto">
+        <!-- Roster table will be generated here -->
+      </div>
+    </div>
+
   </div>
 
   <!-- Modals -->
@@ -206,6 +223,18 @@
       </div>
     </div>
   </div>
+
+  <div id="deleteStudentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md text-center shadow-2xl">
+      <h3 class="text-xl font-bold mb-4 text-red-700">تأكيد الحذف</h3>
+      <p id="deleteStudentMessage" class="text-gray-600 mb-6">هل أنت متأكد من رغبتك في حذف هذا الطالب؟ لا يمكن التراجع عن هذا الإجراء.</p>
+      <div class="flex gap-4 justify-center">
+        <button id="confirmDeleteStudentBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">نعم، حذف</button>
+        <button id="cancelDeleteStudentBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -284,6 +313,8 @@
           
           if (document.getElementById('halaqaView').classList.contains('active') && this.halaqaManager.currentHalaqa) {
               this.openHalaqa(this.currentHalaqaId);
+          } else if (document.getElementById('rosterView').classList.contains('active')) {
+              this.showRoster();
           } else if (this.currentSection && document.getElementById('dashboardView').classList.contains('active')) {
             this.renderDashboard();
           }
@@ -584,12 +615,7 @@
         const sectionName = this.currentSection === 'men' ? 'قسم الرجال' : 'قسم النساء';
         document.getElementById('analyticsTitle').textContent = `إحصائيات أداء الحلقات في ${sectionName}`;
         this.showView('analyticsView');
-        let allHalaqas = [];
-        if (this.currentSection === 'men') {
-          allHalaqas = this.appData.men || [];
-        } else if (this.currentSection === 'women') {
-          (this.appData.women || []).forEach(dar => (dar.halaqas || []).forEach(halaqa => allHalaqas.push({ ...halaqa, darName: dar.name })));
-        }
+        let allHalaqas = this._getAllHalaqas();
         const ctx = document.getElementById('halaqaChart').getContext('2d');
         if (window.myHalaqaChart instanceof Chart) window.myHalaqaChart.destroy();
         const labels = allHalaqas.map(h => h.circleName);
@@ -652,13 +678,8 @@
       }
       
       generateSectionReport() {
-        let sectionHalaqas = [];
-        let sectionName = '';
-        if (this.currentSection === 'men') { sectionHalaqas = this.appData.men || []; sectionName = 'الرجال'; }
-        else if (this.currentSection === 'women') {
-          sectionName = 'النساء';
-          (this.appData.women || []).forEach(dar => { (dar.halaqas || []).forEach(halaqa => sectionHalaqas.push({ ...halaqa, darName: dar.name })); });
-        }
+        const sectionHalaqas = this._getAllHalaqas();
+        const sectionName = this.currentSection === 'men' ? 'الرجال' : 'النساء';
         if (sectionHalaqas.length === 0) return this.halaqaManager.showMessage('لا توجد حلقات في هذا القسم لإنشاء تقرير', 'warning');
         const today = this.halaqaManager.getHijriDateString(new Date());
         let reportHTML = `
@@ -692,6 +713,104 @@
         reportWindow.document.close();
         reportWindow.onload = () => reportWindow.print();
       }
+
+      _getAllHalaqas() {
+        let allHalaqas = [];
+        if (this.currentSection === 'men') {
+          allHalaqas = this.appData.men || [];
+        } else if (this.currentSection === 'women') {
+          (this.appData.women || []).forEach(dar => (dar.halaqas || []).forEach(halaqa => allHalaqas.push({ ...halaqa, darName: dar.name })));
+        }
+        return allHalaqas;
+      }
+
+      _getAllStudents() {
+        let allStudents = [];
+        const allHalaqas = this._getAllHalaqas();
+        allHalaqas.forEach(halaqa => {
+            (halaqa.students || []).forEach(student => {
+                const halaqaIdentifier = this.currentSection === 'women' ? `${halaqa.darName} - ${halaqa.circleName}` : halaqa.circleName;
+                allStudents.push({ ...student, halaqaName: halaqaIdentifier });
+            });
+        });
+        return allStudents;
+      }
+      
+      showRoster() {
+        const sectionName = this.currentSection === 'men' ? 'قسم الرجال' : 'قسم النساء';
+        document.getElementById('rosterTitle').textContent = `قائمة طلاب ${sectionName}`;
+        this.showView('rosterView');
+        const allStudents = this._getAllStudents();
+        this.renderRosterTable(allStudents);
+      }
+
+      renderRosterTable(students) {
+        const container = document.getElementById('rosterContent');
+        if (students.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500">لا يوجد طلاب في هذا القسم لعرضهم.</p>';
+            return;
+        }
+        let tableHTML = `
+            <table class="w-full text-sm text-right text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">#</th>
+                        <th scope="col" class="px-6 py-3">اسم الطالب</th>
+                        <th scope="col" class="px-6 py-3">المرحلة الدراسية</th>
+                        <th scope="col" class="px-6 py-3">السجل المدني</th>
+                        <th scope="col" class="px-6 py-3">الحلقة / الدار</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        students.forEach((student, index) => {
+            tableHTML += `
+                <tr class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 font-medium text-gray-900">${index + 1}</td>
+                    <td class="px-6 py-4 font-medium text-gray-900">${student.name || ''}</td>
+                    <td class="px-6 py-4">${student.grade || ''}</td>
+                    <td class="px-6 py-4">${student.civilId || ''}</td>
+                    <td class="px-6 py-4">${student.halaqaName || ''}</td>
+                </tr>`;
+        });
+        tableHTML += '</tbody></table>';
+        container.innerHTML = tableHTML;
+      }
+
+      exportRosterToExcel() {
+        const students = this._getAllStudents();
+        if (students.length === 0) {
+            this.halaqaManager.showMessage('لا يوجد طلاب لتصديرهم.', 'warning');
+            return;
+        }
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM for UTF-8
+        const headers = ["#", "اسم الطالب", "المرحلة الدراسية", "السجل المدني", "الحلقة/الدار"];
+        csvContent += headers.join(",") + "\r\n";
+        students.forEach((student, index) => {
+          const row = [
+              index + 1,
+              student.name || '',
+              student.grade || '',
+              `'${student.civilId || ''}`,
+              `"${student.halaqaName || ''}"`
+          ];
+          csvContent += row.join(",") + "\r\n";
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `قائمة_طلاب_${this.currentSection}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      printRoster() {
+        const originalTitle = document.title;
+        const sectionName = this.currentSection === 'men' ? 'قسم الرجال' : 'قسم النساء';
+        document.title = `قائمة_طلاب_${sectionName}`;
+        window.print();
+        document.title = originalTitle;
+      }
     }
 
     // ============== HalaqaManager ==============
@@ -700,7 +819,6 @@
         this.app = appManager;
         this.currentHalaqa = null;
         this.currentStudentId = null;
-        this.debounceTimer = null;
         this.initializeEventListeners();
       }
 
@@ -724,6 +842,47 @@
                 this.showMessage('لديك تغييرات غير محفوظة. اضغط على زر الحفظ.', 'warning');
            }
         });
+
+        document.getElementById('cancelDeleteStudentBtn').addEventListener('click', () => {
+            document.getElementById('deleteStudentModal').classList.add('hidden');
+        });
+      }
+
+      removeStudent(studentId) {
+        const student = this.currentHalaqa.students.find(s => s.id === studentId);
+        if (!student) return;
+
+        const modal = document.getElementById('deleteStudentModal');
+        const message = document.getElementById('deleteStudentMessage');
+        const confirmBtn = document.getElementById('confirmDeleteStudentBtn');
+
+        message.textContent = `هل أنت متأكد من رغبتك في حذف الطالب "${student.name}"؟ لا يمكن التراجع عن هذا الإجراء.`;
+        
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.onclick = () => {
+            this.performStudentDeletion(studentId);
+            modal.classList.add('hidden');
+        };
+
+        modal.classList.remove('hidden');
+      }
+
+      performStudentDeletion(studentId) {
+        const idx = this.currentHalaqa.students.findIndex(s => s.id === studentId);
+        if (idx > -1) {
+          const studentName = this.currentHalaqa.students[idx].name;
+          this.currentHalaqa.students.splice(idx, 1);
+          document.getElementById(`tab_${studentId}`).remove();
+          document.getElementById(`content_${studentId}`).remove();
+          if (this.currentStudentId === studentId) {
+            this.currentStudentId = this.currentHalaqa.students.length > 0 ? this.currentHalaqa.students[0].id : null;
+            if (this.currentStudentId) this.switchToStudent(this.currentStudentId);
+          }
+          this.captureAndSaveHalaqa(); 
+          this.showMessage(`تم حذف الطالب: ${studentName}`, 'warning');
+        }
       }
 
       calculateHalaqaTotals(halaqa) {
@@ -815,22 +974,6 @@
         nameInput.value = ''; document.getElementById('newStudentGrade').value = ''; document.getElementById('newStudentCivilId').value = '';
         this.captureAndSaveHalaqa(); // Save automatically after adding a student
         this.showMessage('تم إضافة الطالب بنجاح! لا تنس حفظ أي تغييرات في الجدول.', 'success');
-      }
-
-      removeStudent(studentId) {
-        const idx = this.currentHalaqa.students.findIndex(s => s.id === studentId);
-        if (idx > -1) {
-          const studentName = this.currentHalaqa.students[idx].name;
-          this.currentHalaqa.students.splice(idx, 1);
-          document.getElementById(`tab_${studentId}`).remove();
-          document.getElementById(`content_${studentId}`).remove();
-          if (this.currentStudentId === studentId) {
-            this.currentStudentId = this.currentHalaqa.students.length > 0 ? this.currentHalaqa.students[0].id : null;
-            if (this.currentStudentId) this.switchToStudent(this.currentStudentId);
-          }
-          this.captureAndSaveHalaqa(); // Save automatically after removing a student
-          this.showMessage(`تم حذف الطالب: ${studentName}`, 'warning');
-        }
       }
       
       switchToStudent(studentId) {
@@ -1049,7 +1192,6 @@
               
               const currentWeekInModel = student.data.weeks[weekIndex];
               
-              // FIX: Determine the visible view (mobile or desktop) and only query inputs from it.
               const mobileView = weekTable.querySelector('.block.md\\:hidden');
               const isMobileViewVisible = window.getComputedStyle(mobileView).display !== 'none';
               
@@ -1057,7 +1199,7 @@
                 ? mobileView
                 : weekTable.querySelector('.hidden.md\\:block');
 
-              if (!activeView) return; // Safety check
+              if (!activeView) return;
 
               const inputs = activeView.querySelectorAll('input, select, textarea');
               
@@ -1185,11 +1327,10 @@
     });
     document.getElementById('backToDashboardBtn').addEventListener('click', () => app.showView('dashboardView'));
     document.getElementById('backToDashboardFromAnalyticsBtn').addEventListener('click', () => app.showView('dashboardView'));
+    document.getElementById('backToDashboardFromRosterBtn').addEventListener('click', () => app.showView('dashboardView'));
 
     // --- Modal Controls ---
-    document.getElementById('closeShareModalBtn').addEventListener('click', () => {
-        document.getElementById('shareModal').classList.add('hidden');
-    });
+    document.getElementById('closeShareModalBtn').addEventListener('click', () => document.getElementById('shareModal').classList.add('hidden'));
     document.getElementById('copyShareLinkBtn').addEventListener('click', () => {
         const input = document.getElementById('shareLinkInput');
         input.select();
@@ -1200,13 +1341,14 @@
             app.halaqaManager.showMessage('فشل النسخ التلقائي.', 'error');
         }
     });
-    document.getElementById('closeEditModalBtn').addEventListener('click', () => {
-        document.getElementById('editModal').classList.add('hidden');
-    });
+    document.getElementById('closeEditModalBtn').addEventListener('click', () => document.getElementById('editModal').classList.add('hidden'));
+    
 
-    // --- Analytics View Controls ---
+    // --- Analytics & Roster View Controls ---
     document.getElementById('printAnalyticsBtn').addEventListener('click', () => app.printAnalytics());
     document.getElementById('exportAnalyticsBtn').addEventListener('click', () => app.exportAnalyticsToWord());
+    document.getElementById('printRosterBtn').addEventListener('click', () => app.printRoster());
+    document.getElementById('exportRosterBtn').addEventListener('click', () => app.exportRosterToExcel());
 
     // --- Dashboard Event Delegation ---
     document.getElementById('dashboardView').addEventListener('click', (e) => {
@@ -1218,6 +1360,7 @@
       if (btn.id === 'addNewDarBtn' && app.currentSection === 'women') { app.addNewDar(); return; }
       if (btn.id === 'showAnalyticsBtn') { app.showAnalytics(); return; }
       if (btn.id === 'generateReportBtn') { app.generateSectionReport(); return; }
+      if (btn.id === 'showRosterBtn') { app.showRoster(); return; }
     
       // Buttons on cards (men section)
       if (app.currentSection === 'men') {
