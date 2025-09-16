@@ -247,15 +247,12 @@
           
           if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
             try {
-              // Attempt to sign in with the custom token
               await signInWithCustomToken(auth, __initial_auth_token);
             } catch (tokenError) {
-              // If the custom token is invalid for this project, fall back to anonymous sign-in
               console.warn("Custom token sign-in failed, falling back to anonymous sign-in.", tokenError);
               await signInAnonymously(auth);
             }
           } else {
-            // If no custom token is provided, sign in anonymously
             await signInAnonymously(auth);
           }
 
@@ -280,7 +277,7 @@
             this.appData = { men: data.men || [], women: data.women || [] };
           } else {
             this.appData = { men: [], women: [] };
-            this.saveData(); // Create the initial document if it doesn't exist
+            this.saveData();
           }
           if (!this.initialLinkHandled) this.handleDirectLinkAfterDataLoad();
           if (this.currentSection && document.getElementById('dashboardView').classList.contains('active')) {
@@ -794,12 +791,15 @@
         if (!studentName) return this.showMessage('يرجى إدخال اسم الطالب', 'warning');
         if (!this.currentHalaqa.studentIdCounter) this.currentHalaqa.studentIdCounter = (this.currentHalaqa.students || []).length + 1;
         const studentId = `student_${this.currentHalaqa.id}_${this.currentHalaqa.studentIdCounter++}`;
+        
+        const sequentialDates = this.getSequentialHijriDates(new Date());
         const newStudent = {
           id: studentId, name: studentName,
           grade: document.getElementById('newStudentGrade').value.trim(),
           civilId: document.getElementById('newStudentCivilId').value.trim(),
-          data: { weeks: [{ days: Array(4).fill({}).map(() => ({ date: this.getHijriDateString(new Date()) })) }] }
+          data: { weeks: [{ days: sequentialDates.map(d => ({ date: d })) }] }
         };
+
         if (!this.currentHalaqa.students) this.currentHalaqa.students = [];
         this.currentHalaqa.students.push(newStudent);
         this.createStudentTab(newStudent);
@@ -840,7 +840,12 @@
         const student = this.currentHalaqa.students.find(s => s.id === this.currentStudentId);
         if (student) {
           if (!student.data.weeks) student.data.weeks = [];
-          student.data.weeks.push({ days: Array(4).fill({}).map(() => ({ date: this.getHijriDateString(new Date()) })) });
+          
+          // For now, new weeks start sequentially from today. A more advanced implementation
+          // would require a Hijri date library to calculate from the last week's date.
+          const sequentialDates = this.getSequentialHijriDates(new Date());
+          student.data.weeks.push({ days: sequentialDates.map(d => ({ date: d })) });
+
           const weeksContainer = document.getElementById(`weeks_${this.currentStudentId}`);
           const newWeekData = student.data.weeks[student.data.weeks.length - 1];
           weeksContainer.insertAdjacentHTML('beforeend', this.createWeekTableWithData(student.id, newWeekData, student.data.weeks.length));
@@ -900,6 +905,16 @@
         }
       }
 
+      getSequentialHijriDates(baseDate) {
+        const dates = [];
+        for (let i = 0; i < 4; i++) {
+            const targetDate = new Date(baseDate);
+            targetDate.setDate(baseDate.getDate() + i);
+            dates.push(this.getHijriDateString(targetDate));
+        }
+        return dates;
+      }
+
       createWeekTableWithData(studentId, weekData, weekNumber) {
         const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء'];
         const createTextField = (dayIndex, field, placeholder = '', value = '', type = 'text') =>
@@ -930,7 +945,7 @@
             <div class="flex justify-between items-center mb-4">
               <h5 class="font-bold text-lg text-blue-800">${day}</h5>
               <div class="w-1/2">
-                ${createTextField(dayIndex, 'date', '', dayData.date || this.getHijriDateString(new Date()))}
+                ${createTextField(dayIndex, 'date', '', dayData.date)}
               </div>
             </div>
             <div class="mb-4">
@@ -968,7 +983,7 @@
           const dayData = weekData.days?.[dayIndex] || {};
           return `<tr>
             <td class="border p-2 font-bold bg-gray-50">${day}</td>
-            <td class="border p-1">${createTextField(dayIndex, 'date', '', dayData.date || this.getHijriDateString(new Date()))}</td>
+            <td class="border p-1">${createTextField(dayIndex, 'date', '', dayData.date)}</td>
             <td class="border p-1">${createAttendanceSelect(dayIndex, 'attendance', dayData.attendance)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'hifdhSurah', 'السورة', dayData.hifdhSurah)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'hifdhFrom', 'آية', dayData.hifdhFrom)}</td>
@@ -1015,23 +1030,32 @@
           const studentContent = document.getElementById(`content_${studentId}`);
           if (!studentContent) return;
 
-          student.data.weeks = [];
           const weekTables = studentContent.querySelectorAll('.week-table');
           
-          weekTables.forEach((weekTable, weekIndex) => {
-              const newWeek = { days: [] };
-              const inputs = weekTable.querySelectorAll('input, select, textarea');
+          weekTables.forEach((weekTable) => {
+              const weekNumber = parseInt(weekTable.dataset.weekNumber, 10);
+              if (isNaN(weekNumber)) return;
               
-              for(let i=0; i < 4; i++) newWeek.days.push({}); // Ensure 4 days exist
+              const weekIndex = weekNumber - 1;
+
+              if (!student.data.weeks[weekIndex]) {
+                  student.data.weeks[weekIndex] = { days: Array(4).fill({}) };
+              }
+              
+              const currentWeekInModel = student.data.weeks[weekIndex];
+              
+              const inputs = weekTable.querySelectorAll('input, select, textarea');
               
               inputs.forEach(input => {
                   const dayIndex = parseInt(input.dataset.dayIndex, 10);
                   const field = input.dataset.field;
                   if (!isNaN(dayIndex) && field) {
-                      newWeek.days[dayIndex][field] = input.value;
+                      if (!currentWeekInModel.days[dayIndex]) {
+                        currentWeekInModel.days[dayIndex] = {};
+                      }
+                      currentWeekInModel.days[dayIndex][field] = input.value;
                   }
               });
-              student.data.weeks.push(newWeek);
           });
       }
 
@@ -1059,7 +1083,6 @@
           }
         });
         
-        // Calculate and display Halaqa-wide summary
         const halaqaTotals = this.calculateHalaqaTotals(this.currentHalaqa);
         document.getElementById('halaqaTotalMemorization').textContent = halaqaTotals.totalMemorization;
         document.getElementById('halaqaTotalReview').textContent = halaqaTotals.totalReview;
@@ -1103,7 +1126,7 @@
               const row = [
                   student.name,
                   student.grade,
-                  `'${student.civilId}`, // Prepend with ' to treat as text in Excel
+                  `'${student.civilId}`,
                   summaryDiv.querySelector('.total-memorization').textContent,
                   summaryDiv.querySelector('.total-review').textContent,
                   summaryDiv.querySelector('.total-attendance').textContent,
