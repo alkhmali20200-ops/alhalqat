@@ -134,9 +134,10 @@
 
       <div id="studentsContentContainer"></div>
 
-      <div class="flex gap-4 mb-6 no-print flex-wrap">
+      <div class="flex gap-4 mb-6 no-print flex-wrap items-center">
+        <button id="saveChangesBtn" class="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg font-bold text-lg">💾 حفظ التغييرات</button>
         <button id="addWeekBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold">إضافة أسبوع للطالب الحالي</button>
-        <button id="calculateBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold">حساب المجاميع</button>
+        <button id="calculateBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-bold">حساب المجاميع</button>
         <button id="printBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-bold">📄 إنشاء تقرير (PDF/طباعة)</button>
         <button id="exportBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold">📄 تصدير لإكسل</button>
       </div>
@@ -280,7 +281,13 @@
             this.saveData();
           }
           if (!this.initialLinkHandled) this.handleDirectLinkAfterDataLoad();
-          if (this.currentSection && document.getElementById('dashboardView').classList.contains('active')) {
+          
+          if (document.getElementById('halaqaView').classList.contains('active') && this.halaqaManager.currentHalaqa) {
+              // If inside a halaqa view, reload it to get the latest data,
+              // but be careful not to overwrite local unsaved changes.
+              // The current model (manual save) avoids this issue.
+              this.openHalaqa(this.currentHalaqaId);
+          } else if (this.currentSection && document.getElementById('dashboardView').classList.contains('active')) {
             this.renderDashboard();
           }
         }, (error) => {
@@ -708,14 +715,17 @@
         document.getElementById('exportBtn').addEventListener('click', () => this.exportHalaqaToCSV());
         document.getElementById('printSummaryBtn').addEventListener('click', () => this.printHalaqaSummary());
         document.getElementById('newStudentName').addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addStudent(); });
+        
+        document.getElementById('saveChangesBtn').addEventListener('click', async () => {
+            this.showMessage('جاري حفظ التغييرات...', 'info');
+            await this.captureAndSaveHalaqa();
+            this.showMessage('تم حفظ جميع التغييرات بنجاح!', 'success');
+        });
+
         document.getElementById('halaqaView').addEventListener('input', (e) => {
-          if(e.target.closest('.student-content') || e.target.closest('.border-2')) {
-            this.showMessage('جاري الحفظ...', 'info');
-            clearTimeout(this.debounceTimer);
-            this.debounceTimer = setTimeout(() => {
-              this.captureAndSaveHalaqa().then(() => this.showMessage('تم الحفظ بنجاح!', 'success'));
-            }, 1500);
-          }
+           if(e.target.closest('.student-content') || e.target.closest('.border-2')) {
+                this.showMessage('لديك تغييرات غير محفوظة. اضغط على زر الحفظ.', 'warning');
+           }
         });
       }
 
@@ -806,8 +816,8 @@
         this.createStudentContentWithData(newStudent);
         this.switchToStudent(studentId);
         nameInput.value = ''; document.getElementById('newStudentGrade').value = ''; document.getElementById('newStudentCivilId').value = '';
-        this.captureAndSaveHalaqa();
-        this.showMessage('تم إضافة الطالب بنجاح!', 'success');
+        this.captureAndSaveHalaqa(); // Save automatically after adding a student
+        this.showMessage('تم إضافة الطالب بنجاح! لا تنس حفظ أي تغييرات في الجدول.', 'success');
       }
 
       removeStudent(studentId) {
@@ -821,7 +831,7 @@
             this.currentStudentId = this.currentHalaqa.students.length > 0 ? this.currentHalaqa.students[0].id : null;
             if (this.currentStudentId) this.switchToStudent(this.currentStudentId);
           }
-          this.captureAndSaveHalaqa();
+          this.captureAndSaveHalaqa(); // Save automatically after removing a student
           this.showMessage(`تم حذف الطالب: ${studentName}`, 'warning');
         }
       }
@@ -841,15 +851,13 @@
         if (student) {
           if (!student.data.weeks) student.data.weeks = [];
           
-          // For now, new weeks start sequentially from today. A more advanced implementation
-          // would require a Hijri date library to calculate from the last week's date.
           const sequentialDates = this.getSequentialHijriDates(new Date());
           student.data.weeks.push({ days: sequentialDates.map(d => ({ date: d })) });
 
           const weeksContainer = document.getElementById(`weeks_${this.currentStudentId}`);
           const newWeekData = student.data.weeks[student.data.weeks.length - 1];
           weeksContainer.insertAdjacentHTML('beforeend', this.createWeekTableWithData(student.id, newWeekData, student.data.weeks.length));
-          this.captureAndSaveHalaqa();
+          this.captureAndSaveHalaqa(); // Save automatically after adding a week
         }
       }
 
@@ -1152,7 +1160,7 @@
         else if (type === 'warning') statusDiv.classList.add('bg-yellow-100', 'text-yellow-800');
         else statusDiv.classList.add('bg-blue-100', 'text-blue-800');
         statusDiv.classList.remove('hidden');
-        if (type === 'success' || type === 'warning' || type === 'error') {
+        if (type === 'success' || type === 'error') { // Keep warning message until next action
             setTimeout(() => statusDiv.classList.add('hidden'), 3000);
         }
       }
