@@ -13,7 +13,7 @@
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
-    body { font-family: 'Amiri', serif; }
+    body { font-family: 'Amiri', serif; background-color: #f9fafb; }
     .print-page { page-break-after: always; }
     #print-header { display: none; }
 
@@ -25,10 +25,9 @@
       #print-header { display: block; text-align: center; margin-bottom: 1rem; border-bottom: 2px solid #333; padding-bottom: 1rem;}
     }
     input, select, textarea { border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 8px; font-family: 'Amiri', serif; background-color: transparent; }
-    .student-tab { transition: all 0.3s ease; cursor: pointer; }
-    .student-tab.active { background-color: #3b82f6; color: white; }
-    .student-tab:hover { background-color: #e5e7eb; }
-    .student-tab.active:hover { background-color: #2563eb; }
+    .student-tab { transition: all 0.3s ease; cursor: pointer; border-right: 4px solid transparent; }
+    .student-tab.active { border-right-color: #3b82f6; background-color: #eff6ff; color: #1e40af; font-weight: bold; }
+    .student-tab:hover { background-color: #f3f4f6; }
     .student-content, .view { display: none; }
     .view.active { display: block; }
     .student-content.active { display: block; }
@@ -54,7 +53,7 @@
     // window.__initial_auth_token = "YOUR_CUSTOM_TOKEN";
   </script>
 </head>
-<body class="bg-gray-50 p-4">
+<body class="bg-gray-100 p-4">
 
   <!-- App Container -->
   <div class="container mx-auto max-w-7xl bg-white shadow-lg rounded-lg p-6">
@@ -90,86 +89,123 @@
         </div>
         <div id="listContainer"></div>
       </div>
+       <hr class="my-8">
+       <div class="bg-gray-100 p-6 rounded-lg border border-gray-200">
+         <h2 class="text-xl font-bold mb-4 text-gray-700">النسخ الاحتياطي والاستعادة</h2>
+         <p class="text-gray-600 mb-4">لحماية بياناتك، قم بتحميل نسخة احتياطية بشكل دوري واحفظها في مكان آمن (مثل جوجل درايف). يمكنك استعادة البيانات من ملف النسخ الاحتياطي في أي وقت.</p>
+         <div class="flex gap-4 flex-wrap">
+           <button id="downloadBackupBtn" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg">📥 تحميل نسخة احتياطية (JSON)</button>
+           <button id="restoreBackupBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">📤 استعادة من نسخة احتياطية (JSON)</button>
+         </div>
+       </div>
     </div>
 
     <!-- View 3: Halaqa Management -->
     <div id="halaqaView" class="view">
       <div id="print-header"></div>
-      <div class="flex justify-start mb-4 no-print">
+      <div class="flex justify-between items-center mb-6 no-print">
+        <h2 id="halaqaViewTitle" class="text-3xl font-bold text-gray-800">إدارة الحلقة</h2>
         <button id="backToDashboardBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">→ العودة للوحة التحكم</button>
       </div>
 
-      <div class="border-2 border-gray-800 p-4 mb-6 no-print">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div class="flex items-center gap-2">
-            <span class="font-bold">المعلم /</span>
-            <input type="text" id="teacherName" class="flex-1 border-b border-gray-400 bg-transparent" placeholder="اسم المعلم">
+      <!-- Main Layout Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 no-print">
+        
+        <!-- Right Column: Student Data Entry -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+            <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">بيانات الحلقة</h3>
+            <div class="p-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold">المعلم /</span>
+                  <input type="text" id="teacherName" class="flex-1 border-b border-gray-400 bg-transparent" placeholder="اسم المعلم">
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold">اسم الحلقة /</span>
+                  <input type="text" id="circleName" class="flex-1 border-b border-gray-400 bg-transparent" placeholder="اسم الحلقة">
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold">الشهر /</span>
+                  <select id="month" class="border-b border-gray-400 bg-transparent">
+                    <option value="">اختر الشهر</option>
+                    <option value="محرم">محرم</option><option value="صفر">صفر</option><option value="ربيع الأول">ربيع الأول</option><option value="ربيع الثاني">ربيع الثاني</option>
+                    <option value="جمادى الأولى">جمادى الأولى</option><option value="جمادى الثانية">جمادى الثانية</option><option value="رجب">رجب</option><option value="شعبان">شعبان</option>
+                    <option value="رمضان">رمضان</option><option value="شوال">شوال</option><option value="ذو القعدة">ذو القعدة</option><option value="ذو الحجة">ذو الحجة</option>
+                  </select>
+                </div>
+              </div>
+              <div class="text-center"><span id="currentHijriYear" class="font-bold text-lg"></span></div>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="font-bold">اسم الحلقة /</span>
-            <input type="text" id="circleName" class="flex-1 border-b border-gray-400 bg-transparent" placeholder="اسم الحلقة">
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="font-bold">الشهر /</span>
-            <select id="month" class="border-b border-gray-400 bg-transparent">
-              <option value="">اختر الشهر</option>
-              <option value="محرم">محرم</option><option value="صفر">صفر</option><option value="ربيع الأول">ربيع الأول</option><option value="ربيع الثاني">ربيع الثاني</option>
-              <option value="جمادى الأولى">جمادى الأولى</option><option value="جمادى الثانية">جمادى الثانية</option><option value="رجب">رجب</option><option value="شعبان">شعبان</option>
-              <option value="رمضان">رمضان</option><option value="شوال">شوال</option><option value="ذو القعدة">ذو القعدة</option><option value="ذو الحجة">ذو الحجة</option>
-            </select>
+
+          <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+            <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">الطلاب</h3>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <h4 class="font-bold text-lg mb-3">إضافة طالب جديد</h4>
+              <div class="flex gap-4 items-center flex-wrap">
+                <input type="text" id="newStudentName" placeholder="اسم الطالب الجديد" class="flex-grow">
+                <input type="text" id="newStudentGrade" placeholder="المرحلة الدراسية" class="flex-grow">
+                <input type="text" id="newStudentCivilId" placeholder="السجل المدني" class="flex-grow">
+                <button id="addStudentBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-bold">➕ إضافة طالب</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+                <div class="md:col-span-1 border-l border-gray-200 pl-4">
+                    <h4 class="font-bold mb-3 text-gray-600">قائمة الطلاب</h4>
+                    <div id="studentsTabsContainer"></div>
+                </div>
+                <div class="md:col-span-3">
+                    <div id="studentsContentContainer"></div>
+                    <div id="addWeekContainer" class="mt-6">
+                       <button id="addWeekBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold w-full sm:w-auto">➕ إضافة أسبوع للطالب الحالي</button>
+                    </div>
+                </div>
+            </div>
           </div>
         </div>
-        <div class="text-center"><span id="currentHijriYear" class="font-bold text-lg"></span></div>
-      </div>
 
-      <div class="mb-6 no-print">
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <h3 class="font-bold text-lg mb-3">إدارة الطلاب</h3>
-          <div class="flex gap-4 items-center flex-wrap">
-            <input type="text" id="newStudentName" placeholder="اسم الطالب الجديد" class="flex-grow">
-            <input type="text" id="newStudentGrade" placeholder="المرحلة الدراسية" class="flex-grow">
-            <input type="text" id="newStudentCivilId" placeholder="السجل المدني" class="flex-grow">
-            <button id="addStudentBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-bold">➕ إضافة طالب</button>
-          </div>
+        <!-- Left Column: Control Panel -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200 sticky top-6">
+                <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">لوحة التحكم والتقارير</h3>
+                
+                <div class="space-y-3">
+                    <button id="saveChangesBtn" class="w-full text-lg bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-bold flex items-center justify-center gap-2">💾 <span>حفظ التغييرات</span></button>
+                    <button id="calculateBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-bold flex items-center justify-center gap-2">🧮 <span>حساب المجاميع</span></button>
+                </div>
+
+                <hr class="my-6">
+                <h4 class="font-bold mb-3 text-gray-600">تقارير الطالب المحدد</h4>
+                <div class="space-y-3">
+                    <button id="printBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-bold">📄 طباعة تقرير الطالب</button>
+                    <button id="printSummaryBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold">🖨️ طباعة ملخص الطالب</button>
+                </div>
+                
+                <hr class="my-6">
+                <h4 class="font-bold mb-3 text-gray-600">تقارير الحلقة كاملة</h4>
+                <div class="space-y-3">
+                     <button id="printAllStudentsBtn" class="w-full bg-blue-800 hover:bg-blue-900 text-white px-6 py-2 rounded-lg font-bold">🖨️ طباعة تقارير كل الطلاب</button>
+                     <button id="exportAllStudentsToWordBtn" class="w-full bg-blue-800 hover:bg-blue-900 text-white px-6 py-2 rounded-lg font-bold">📄 تصدير الكل (وورد)</button>
+                     <button id="exportBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold">📄 تصدير لإكسل (ملخص)</button>
+                </div>
+                
+                <div id="halaqaSummary" class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg hidden">
+                    <h3 class="text-lg font-bold text-blue-800 mb-3 text-center">ملخص إنجازات الحلقة</h3>
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div><p class="text-xl font-bold text-green-600" id="halaqaTotalMemorization">0</p><p class="text-xs text-gray-600">إجمالي الحفظ</p></div>
+                        <div><p class="text-xl font-bold text-indigo-600" id="halaqaTotalReview">0</p><p class="text-xs text-gray-600">إجمالي المراجعة</p></div>
+                        <div><p class="text-xl font-bold text-teal-600" id="halaqaTotalAttendance">0</p><p class="text-xs text-gray-600">إجمالي الحضور</p></div>
+                        <div><p class="text-xl font-bold text-red-600" id="halaqaTotalAbsence">0</p><p class="text-xs text-gray-600">إجمالي الغياب</p></div>
+                    </div>
+                </div>
+                 <div id="saveStatus" class="mt-4 p-3 rounded-lg hidden text-center"></div>
+            </div>
         </div>
       </div>
-
-      <div id="studentsTabsContainer" class="mb-6 no-print">
-        <div class="flex flex-wrap gap-2 mb-4 border-b border-gray-300 pb-2" id="studentsTabs"></div>
-      </div>
-
-      <div id="studentsContentContainer"></div>
-
-      <div class="flex gap-4 mb-6 no-print flex-wrap items-center">
-        <button id="saveChangesBtn" class="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg font-bold text-lg">💾 حفظ التغييرات</button>
-        <button id="addWeekBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold">إضافة أسبوع للطالب الحالي</button>
-        <button id="calculateBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-bold">حساب المجاميع</button>
-        <button id="printBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-bold">📄 تقرير الطالب المحدد</button>
-        <button id="exportBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold">📄 تصدير لإكسل</button>
-      </div>
-
-       <div class="border-t pt-4 mt-6 no-print">
-         <h3 class="text-lg font-bold mb-3 text-gray-600">عمليات الحلقة</h3>
-         <div class="flex gap-4 flex-wrap">
-            <button id="printAllStudentsBtn" class="bg-blue-800 hover:bg-blue-900 text-white px-6 py-2 rounded-lg font-bold">🖨️ طباعة تقارير كل الطلاب</button>
-            <button id="exportAllStudentsToWordBtn" class="bg-blue-800 hover:bg-blue-900 text-white px-6 py-2 rounded-lg font-bold">📄 تصدير الكل (وورد)</button>
-         </div>
-       </div>
-
-      <div id="saveStatus" class="mb-4 p-3 rounded-lg hidden"></div>
-
-      <div id="halaqaSummary" class="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg no-print hidden">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-xl font-bold text-blue-800">ملخص إنجازات الحلقة</h3>
-          <button id="printSummaryBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-1 rounded-lg font-bold">🖨️ طباعة ملخص الطالب</button>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div><p class="text-2xl font-bold text-green-600" id="halaqaTotalMemorization">0</p><p class="text-sm text-gray-600">إجمالي أوجه الحفظ</p></div>
-          <div><p class="text-2xl font-bold text-indigo-600" id="halaqaTotalReview">0</p><p class="text-sm text-gray-600">إجمالي أوجه المراجعة</p></div>
-          <div><p class="text-2xl font-bold text-teal-600" id="halaqaTotalAttendance">0</p><p class="text-sm text-gray-600">إجمالي أيام الحضور</p></div>
-          <div><p class="text-2xl font-bold text-red-600" id="halaqaTotalAbsence">0</p><p class="text-sm text-gray-600">إجمالي أيام الغياب</p></div>
-        </div>
-      </div>
+       <!-- This div is for printing content that is not visible on screen -->
+       <div id="printableContent" class="hidden"></div>
     </div>
 
     <!-- View 4: Analytics View -->
@@ -205,7 +241,7 @@
   </div>
 
   <!-- Modals -->
-  <div id="shareModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print">
+  <div id="shareModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print z-50">
     <div class="bg-white rounded-lg p-6 w-full max-w-md text-center shadow-2xl">
       <h3 class="text-xl font-bold mb-4">مشاركة رابط الحلقة</h3>
       <p class="text-gray-600 mb-4">انسخ هذا الرابط وأرسله للمعلم/ة. سيتمكن من الدخول مباشرة إلى الحلقة.</p>
@@ -217,7 +253,7 @@
     </div>
   </div>
 
-  <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print">
+  <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print z-50">
     <div class="bg-white rounded-lg p-6 w-full max-w-md text-center shadow-2xl">
       <h3 class="text-xl font-bold mb-4">تعديل بيانات الحلقة</h3>
       <div class="space-y-4 text-right">
@@ -236,19 +272,8 @@
       </div>
     </div>
   </div>
-
-  <div id="deleteStudentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md text-center shadow-2xl">
-      <h3 class="text-xl font-bold mb-4 text-red-700">تأكيد الحذف</h3>
-      <p id="deleteStudentMessage" class="text-gray-600 mb-6">هل أنت متأكد من رغبتك في حذف هذا الطالب؟ لا يمكن التراجع عن هذا الإجراء.</p>
-      <div class="flex gap-4 justify-center">
-        <button id="confirmDeleteStudentBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">نعم، حذف</button>
-        <button id="cancelDeleteStudentBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">إلغاء</button>
-      </div>
-    </div>
-  </div>
   
-  <div id="editStudentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print">
+  <div id="editStudentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print z-50">
     <div class="bg-white rounded-lg p-6 w-full max-w-md text-center shadow-2xl">
       <h3 class="text-xl font-bold mb-4">تعديل بيانات الطالب</h3>
       <div class="space-y-4 text-right">
@@ -272,7 +297,7 @@
     </div>
   </div>
 
-  <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print">
+  <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print z-50">
     <div class="bg-white rounded-lg p-6 w-full max-w-md text-center shadow-2xl">
       <h3 id="confirmModalTitle" class="text-xl font-bold mb-4 text-red-700">تأكيد الإجراء</h3>
       <p id="confirmModalMessage" class="text-gray-600 mb-6"></p>
@@ -454,26 +479,30 @@
             });
           }
         } else if (this.currentSection === 'women') {
+          const darColors = ['#ec4899', '#a855f7', '#6366f1', '#14b8a6', '#06b6d4'];
           listTitle.textContent = 'الدور المسجلة';
           formContainer.innerHTML = `
             <h2 class="text-xl font-bold mb-4">إضافة دار جديدة</h2>
             <div class="flex flex-wrap gap-4 items-end">
               <div class="flex-grow"><label for="newDarName" class="block text-sm font-medium text-gray-700">اسم الدار</label><input type="text" id="newDarName" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="مثال: دار الهدى النسائية"></div>
-              <button id="addNewDarBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">➕ إضافة دار</button>
+              <button id="addNewDarBtn" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-lg">➕ إضافة دار</button>
             </div>`;
           listContainer.className = 'space-y-6';
           const dars = this.appData.women || [];
           if (dars.length === 0) {
             listContainer.innerHTML = `<p class="text-gray-500">لا توجد دور مسجلة في هذا القسم بعد.</p>`;
           } else {
-            dars.forEach(dar => {
+            dars.forEach((dar, index) => {
+              const color = darColors[index % darColors.length];
               const darContainer = document.createElement('div');
-              darContainer.className = 'bg-white p-6 rounded-lg shadow-lg border border-pink-200';
+              darContainer.className = 'bg-white rounded-lg shadow-lg overflow-hidden border-t-4';
+              darContainer.style.borderColor = color;
+
               let halaqaCardsHTML = (dar.halaqas || []).map(halaqa => `
                 <div class="bg-gray-50 p-4 rounded-md border flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                   <div>
                     <h4 class="font-bold text-gray-800">${halaqa.circleName}</h4>
-                    <p class="text-sm text-gray-500">${halaqa.teacherName}</p>
+                    <p class="text-sm text-gray-500">المعلمة: ${halaqa.teacherName}</p>
                   </div>
                   <div class="flex gap-2 flex-shrink-0 flex-wrap">
                     <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" class="open-halaqa-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded-md text-sm">فتح</button>
@@ -483,18 +512,21 @@
                   </div>
                 </div>
               `).join('');
+
               darContainer.innerHTML = `
-                <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-2xl font-bold text-pink-700">${dar.name}</h3>
+                <div class="flex justify-between items-center p-4" style="background-color: ${color}1A;">
+                  <h3 class="text-2xl font-bold" style="color: ${color};">${dar.name}</h3>
                   <button data-dar-id="${dar.id}" class="delete-dar-btn bg-red-100 text-red-700 hover:bg-red-200 font-bold py-1 px-3 rounded-md">حذف الدار</button>
                 </div>
-                <div class="space-y-3 mb-6">${halaqaCardsHTML || '<p class="text-gray-500">لا توجد حلقات في هذه الدار بعد.</p>'}</div>
-                <div class="bg-pink-50 p-4 rounded-lg border border-pink-200 mt-4">
-                  <h4 class="font-bold mb-3">إضافة حلقة جديدة لهذه الدار</h4>
-                  <div class="flex flex-wrap gap-4 items-end">
-                    <div class="flex-grow"><label for="newHalaqaName_${dar.id}" class="block text-sm font-medium text-gray-700">اسم الحلقة</label><input type="text" id="newHalaqaName_${dar.id}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="مثال: حلقة المتقدمات"></div>
-                    <div class="flex-grow"><label for="newTeacherName_${dar.id}" class="block text-sm font-medium text-gray-700">اسم المعلمة</label><input type="text" id="newTeacherName_${dar.id}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="اسم المعلمة المسؤولة"></div>
-                    <button data-dar-id="${dar.id}" class="add-halaqa-to-dar-btn bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-lg">➕ إضافة حلقة</button>
+                <div class="p-4 space-y-4">
+                  <div>${halaqaCardsHTML || '<p class="text-gray-500">لا توجد حلقات في هذه الدار بعد.</p>'}</div>
+                  <div class="bg-gray-50 p-4 rounded-lg border border-dashed mt-4">
+                    <h4 class="font-bold mb-3">إضافة حلقة جديدة لهذه الدار</h4>
+                    <div class="flex flex-wrap gap-4 items-end">
+                      <div class="flex-grow"><label for="newHalaqaName_${dar.id}" class="block text-sm font-medium text-gray-700">اسم الحلقة</label><input type="text" id="newHalaqaName_${dar.id}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="مثال: حلقة المتقدمات"></div>
+                      <div class="flex-grow"><label for="newTeacherName_${dar.id}" class="block text-sm font-medium text-gray-700">اسم المعلمة</label><input type="text" id="newTeacherName_${dar.id}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="اسم المعلمة المسؤولة"></div>
+                      <button data-dar-id="${dar.id}" class="add-halaqa-to-dar-btn text-white font-bold py-2 px-6 rounded-lg" style="background-color: ${color};">➕ إضافة حلقة</button>
+                    </div>
                   </div>
                 </div>`;
               listContainer.appendChild(darContainer);
@@ -934,6 +966,63 @@
         window.print();
         document.title = originalTitle;
       }
+      
+      downloadBackup() {
+        try {
+            const dataStr = JSON.stringify(this.appData, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const date = new Date().toISOString().slice(0, 10);
+            link.download = `halaqa_backup_${date}.json`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            this.halaqaManager.showMessage('تم تحميل النسخة الاحتياطية بنجاح.', 'success');
+        } catch (error) {
+            console.error("Backup failed:", error);
+            this.halaqaManager.showMessage('فشل تحميل النسخة الاحتياطية.', 'error');
+        }
+      }
+
+      restoreBackup() {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.json';
+        fileInput.onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const restoredData = JSON.parse(event.target.result);
+                    // Basic validation
+                    if (typeof restoredData === 'object' && restoredData !== null && 'men' in restoredData && 'women' in restoredData) {
+                        this.showConfirmModal(
+                            'تأكيد الاستعادة',
+                            'هل أنت متأكد من رغبتك في استعادة البيانات؟ سيتم استبدال جميع البيانات الحالية بالبيانات الموجودة في الملف.',
+                            async () => {
+                                this.appData = restoredData;
+                                await this.saveData();
+                                this.halaqaManager.showMessage('تمت استعادة البيانات بنجاح!', 'success');
+                                if(this.currentSection) {
+                                    this.renderDashboard();
+                                }
+                            }
+                        );
+                    } else {
+                        throw new Error("ملف غير صالح أو تالف.");
+                    }
+                } catch (error) {
+                    console.error("Restore failed:", error);
+                    this.halaqaManager.showMessage(`فشل في استعادة البيانات: ${error.message}`, 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+        fileInput.click();
+      }
     }
 
     // ============== HalaqaManager ==============
@@ -968,10 +1057,6 @@
            if(e.target.closest('.student-content') || e.target.closest('.no-print.border-2')) {
                 this.showMessage('لديك تغييرات غير محفوظة. اضغط على زر الحفظ.', 'warning');
            }
-        });
-
-        document.getElementById('cancelDeleteStudentBtn').addEventListener('click', () => {
-            document.getElementById('deleteStudentModal').classList.add('hidden');
         });
         
         document.getElementById('closeStudentEditModalBtn').addEventListener('click', () => {
@@ -1075,9 +1160,10 @@
 
       loadHalaqa(halaqaData) {
         this.currentHalaqa = JSON.parse(JSON.stringify(halaqaData));
-        document.getElementById('studentsTabs').innerHTML = '';
+        document.getElementById('studentsTabsContainer').innerHTML = '';
         document.getElementById('studentsContentContainer').innerHTML = '';
         document.getElementById('halaqaSummary').classList.add('hidden');
+        document.getElementById('halaqaViewTitle').textContent = `إدارة حلقة: ${this.currentHalaqa.circleName}`;
         const { year, monthName } = this.getHijriDateParts();
         document.getElementById('currentHijriYear').textContent = `لعام ${year}هـ`;
         document.getElementById('teacherName').value = this.currentHalaqa.teacherName;
@@ -1174,25 +1260,19 @@
       }
 
       createStudentTab(student) {
-        const tabsContainer = document.getElementById('studentsTabs');
+        const tabsContainer = document.getElementById('studentsTabsContainer');
         const tab = document.createElement('div');
         tab.id = `tab_${student.id}`;
-        tab.className = 'student-tab px-4 py-2 rounded-lg border border-gray-300 font-bold flex items-center gap-2';
-        tab.innerHTML = `<span class="flex-1 select-none">${student.name}</span>`;
+        tab.className = 'student-tab p-3 flex items-center justify-between border-b border-gray-200';
+        tab.innerHTML = `
+          <span class="flex-1 select-none">${student.name}</span>
+          <div class="flex items-center gap-2">
+              <button data-student-id="${student.id}" class="edit-student-btn action-btn text-blue-500 hover:text-blue-700 text-lg">✏️</button>
+              <button data-student-id="${student.id}" class="delete-student-btn action-btn text-red-500 hover:text-red-700 text-lg">✕</button>
+          </div>`;
+        tab.querySelector('.edit-student-btn').addEventListener('click', (e) => { e.stopPropagation(); this.editStudent(student.id); });
+        tab.querySelector('.delete-student-btn').addEventListener('click', (e) => { e.stopPropagation(); this.removeStudent(student.id); });
         tab.addEventListener('click', () => this.switchToStudent(student.id));
-        
-        const editBtn = document.createElement('button');
-        editBtn.className = 'action-btn text-blue-500 hover:text-blue-700 rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold';
-        editBtn.innerHTML = '✏️'; editBtn.title = 'تعديل الطالب';
-        editBtn.addEventListener('click', (e) => { e.stopPropagation(); this.editStudent(student.id); });
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'action-btn text-red-500 hover:text-red-700 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold bg-gray-100 hover:bg-red-100';
-        deleteBtn.textContent = '✕'; deleteBtn.title = 'حذف الطالب';
-        deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); this.removeStudent(student.id); });
-        
-        tab.appendChild(editBtn);
-        tab.appendChild(deleteBtn);
         tabsContainer.appendChild(tab);
       }
       
@@ -1203,11 +1283,20 @@
         studentDiv.className = 'student-content student-card';
         let weeksHTML = (student.data.weeks || []).map((weekData, index) => this.createWeekTableWithData(student.id, weekData, index + 1)).join('');
         studentDiv.innerHTML = `
-          <div class="border-2 border-blue-600 p-4 mb-6 bg-blue-50">
+          <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded-r-lg mb-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div><span class="font-bold">اسم الطالب:</span> <span class="text-blue-800 font-bold">${student.name}</span></div>
-              <div><span class="font-bold">المرحلة الدراسية:</span> <span class="text-blue-800">${student.grade}</span></div>
-              <div><span class="font-bold">السجل المدني:</span> <span class="text-blue-800">${student.civilId}</span></div>
+              <div>
+                <p class="font-bold text-sm text-blue-900/60">اسم الطالب</p>
+                <p class="text-lg font-bold">${student.name}</p>
+              </div>
+              <div>
+                <p class="font-bold text-sm text-blue-900/60">المرحلة الدراسية</p>
+                <p class="text-lg">${student.grade}</p>
+              </div>
+              <div>
+                <p class="font-bold text-sm text-blue-900/60">السجل المدني</p>
+                <p class="text-lg">${student.civilId}</p>
+              </div>
             </div>
           </div>
           <div id="weeks_${student.id}">${weeksHTML}</div>
@@ -1526,11 +1615,20 @@
         });
 
         const studentInfoHeaderHtml = `
-          <div class="p-4 mb-6 bg-blue-50" style="border: 2px solid #3b82f6; border-radius: 0.5rem;">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-              <div><span style="font-weight: bold;">اسم الطالب:</span> <span style="color: #1e40af; font-weight: bold;">${student.name}</span></div>
-              <div><span style="font-weight: bold;">المرحلة الدراسية:</span> <span style="color: #1e40af;">${student.grade}</span></div>
-              <div><span style="font-weight: bold;">السجل المدني:</span> <span style="color: #1e40af;">${student.civilId}</span></div>
+          <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-800 p-4 rounded-r-lg mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p class="font-bold text-sm text-blue-900/60">اسم الطالب</p>
+                <p class="text-lg font-bold">${student.name}</p>
+              </div>
+              <div>
+                <p class="font-bold text-sm text-blue-900/60">المرحلة الدراسية</p>
+                <p class="text-lg">${student.grade}</p>
+              </div>
+              <div>
+                <p class="font-bold text-sm text-blue-900/60">السجل المدني</p>
+                <p class="text-lg">${student.civilId}</p>
+              </div>
             </div>
           </div>`;
 
@@ -1776,6 +1874,63 @@
           link.click();
           document.body.removeChild(link);
       }
+      
+      downloadBackup() {
+        try {
+            const dataStr = JSON.stringify(this.app.appData, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const date = new Date().toISOString().slice(0, 10);
+            link.download = `halaqa_backup_${date}.json`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            this.showMessage('تم تحميل النسخة الاحتياطية بنجاح.', 'success');
+        } catch (error) {
+            console.error("Backup failed:", error);
+            this.showMessage('فشل تحميل النسخة الاحتياطية.', 'error');
+        }
+      }
+
+      restoreBackup() {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.json';
+        fileInput.onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const restoredData = JSON.parse(event.target.result);
+                    // Basic validation
+                    if (typeof restoredData === 'object' && restoredData !== null && 'men' in restoredData && 'women' in restoredData) {
+                        this.app.showConfirmModal(
+                            'تأكيد الاستعادة',
+                            'هل أنت متأكد من رغبتك في استعادة البيانات؟ سيتم استبدال جميع البيانات الحالية بالبيانات الموجودة في الملف.',
+                            async () => {
+                                this.app.appData = restoredData;
+                                await this.app.saveData();
+                                this.showMessage('تمت استعادة البيانات بنجاح!', 'success');
+                                if(this.app.currentSection) {
+                                    this.app.renderDashboard();
+                                }
+                            }
+                        );
+                    } else {
+                        throw new Error("ملف غير صالح أو تالف.");
+                    }
+                } catch (error) {
+                    console.error("Restore failed:", error);
+                    this.showMessage(`فشل في استعادة البيانات: ${error.message}`, 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+        fileInput.click();
+      }
 
       showMessage(message, type = 'info') {
         const statusDiv = document.getElementById('saveStatus');
@@ -1839,6 +1994,8 @@
       if (btn.id === 'generateReportBtn') { app.generateSectionReport('ملخص'); return; }
       if (btn.id === 'generateMonthlyReportBtn') { app.generateSectionReport('الشهري'); return; }
       if (btn.id === 'showRosterBtn') { app.showRoster(); return; }
+      if (btn.id === 'downloadBackupBtn') { app.halaqaManager.downloadBackup(); return; }
+      if (btn.id === 'restoreBackupBtn') { app.halaqaManager.restoreBackup(); return; }
     
       if (app.currentSection === 'men') {
         const halaqaId = btn.dataset.halaqaId;
