@@ -554,8 +554,8 @@
       }
       
       addNewHalaqaToDar(darId) {
-        const halaqaNameInput = document.getElementById(`newHalaqaName_${dar.id}`);
-        const teacherNameInput = document.getElementById(`newTeacherName_${dar.id}`);
+        const halaqaNameInput = document.getElementById(`newHalaqaName_${darId}`);
+        const teacherNameInput = document.getElementById(`newTeacherName_${darId}`);
         const circleName = halaqaNameInput.value.trim();
         const teacherName = teacherNameInput.value.trim();
         if (!circleName || !teacherName) { return this.halaqaManager.showMessage('يرجى إدخال اسم الحلقة واسم المعلمة', 'warning'); }
