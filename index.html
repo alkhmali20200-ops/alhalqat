@@ -144,9 +144,17 @@
         <button id="saveChangesBtn" class="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg font-bold text-lg">💾 حفظ التغييرات</button>
         <button id="addWeekBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold">إضافة أسبوع للطالب الحالي</button>
         <button id="calculateBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-bold">حساب المجاميع</button>
-        <button id="printBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-bold">📄 إنشاء تقرير (PDF/طباعة)</button>
+        <button id="printBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-bold">📄 تقرير الطالب المحدد</button>
         <button id="exportBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold">📄 تصدير لإكسل</button>
       </div>
+
+       <div class="border-t pt-4 mt-6 no-print">
+         <h3 class="text-lg font-bold mb-3 text-gray-600">عمليات الحلقة</h3>
+         <div class="flex gap-4 flex-wrap">
+            <button id="printAllStudentsBtn" class="bg-blue-800 hover:bg-blue-900 text-white px-6 py-2 rounded-lg font-bold">🖨️ طباعة تقارير كل الطلاب</button>
+            <button id="exportAllStudentsToWordBtn" class="bg-blue-800 hover:bg-blue-900 text-white px-6 py-2 rounded-lg font-bold">📄 تصدير الكل (وورد)</button>
+         </div>
+       </div>
 
       <div id="saveStatus" class="mb-4 p-3 rounded-lg hidden"></div>
 
@@ -892,8 +900,11 @@
         document.getElementById('calculateBtn').addEventListener('click', () => this.calculateAllTotals());
         document.getElementById('printBtn').addEventListener('click', () => this.generatePrintableReport());
         document.getElementById('exportBtn').addEventListener('click', () => this.exportHalaqaToCSV());
-        document.getElementById('printSummaryBtn').addEventListener('click', () => this.printHalaqaSummary());
-        document.getElementById('newStudentName').addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addStudent(); });
+        document.getElementById('printSummaryBtn').addEventListener('click', () => this.printStudentSummary());
+
+        // New Buttons
+        document.getElementById('printAllStudentsBtn').addEventListener('click', () => this.generateFullHalaqaReport('print'));
+        document.getElementById('exportAllStudentsToWordBtn').addEventListener('click', () => this.generateFullHalaqaReport('word'));
         
         document.getElementById('saveChangesBtn').addEventListener('click', async () => {
             this.showMessage('جاري حفظ التغييرات...', 'info');
@@ -1379,18 +1390,51 @@
         offscreenCanvas.remove();
         return dataUrl;
       }
+      
+      createWeekTableForExport(weekData, weekNumber) {
+        const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء'];
+        let desktopDayRows = days.map((day, dayIndex) => {
+          const dayData = weekData.days?.[dayIndex] || {};
+          return `<tr>
+            <td class="border p-1 font-bold bg-gray-50">${day}</td>
+            <td class="border p-1">${dayData.date || ''}</td>
+            <td class="border p-1">${dayData.attendance || ''}</td>
+            <td class="border p-1">${dayData.hifdhSurah || ''}</td>
+            <td class="border p-1">${dayData.hifdhFrom || ''}</td>
+            <td class="border p-1">${dayData.hifdhTo || ''}</td>
+            <td class="border p-1">${dayData.hifdhGrade || ''}</td>
+            <td class="border p-1">${dayData.hifdhFaces || '0'}</td>
+            <td class="border p-1">${dayData.murajaaSurah || ''}</td>
+            <td class="border p-1">${dayData.murajaaFrom || ''}</td>
+            <td class="border p-1">${dayData.murajaaTo || ''}</td>
+            <td class="border p-1">${dayData.murajaaGrade || ''}</td>
+            <td class="border p-1">${dayData.murajaaFaces || '0'}</td>
+            <td class="border p-1" style="min-width: 150px;">${dayData.notes || ''}</td>
+          </tr>`;
+        }).join('');
 
-      async generatePrintableReport() {
-        if(!this.currentStudentId) return this.showMessage('الرجاء تحديد طالب لطباعة تقريره', 'warning');
-        
-        this.captureStudentData(this.currentStudentId);
-        const student = this.currentHalaqa.students.find(s => s.id === this.currentStudentId);
-        if(!student) return;
+        return `<div class="week-table mb-6">
+          <h4 class="font-bold p-2 bg-gray-100 text-center text-base">الأسبوع ${weekNumber}</h4>
+          <div class="overflow-x-auto">
+              <table class="w-full text-sm" style="border-collapse: collapse; border: 1px solid #ccc;">
+                <thead class="bg-gray-200">
+                  <tr>
+                    <th rowspan="2" class="border p-1">اليوم</th><th rowspan="2" class="border p-1">التاريخ</th><th rowspan="2" class="border p-1">الحضور</th>
+                    <th colspan="5" class="border p-1">الحفظ</th><th colspan="5" class="border p-1">المراجعة</th>
+                    <th rowspan="2" class="border p-1">الملاحظات</th>
+                  </tr>
+                  <tr class="bg-gray-100 text-xs">
+                    <th class="border p-1">السورة</th><th class="border p-1">من</th><th class="border p-1">إلى</th><th class="border p-1">التقدير</th><th class="border p-1">عدد الأوجه</th>
+                    <th class="border p-1">السورة</th><th class="border p-1">من</th><th class="border p-1">إلى</th><th class="border p-1">التقدير</th><th class="border p-1">عدد الأوجه</th>
+                  </tr>
+                </thead>
+                <tbody>${desktopDayRows}</tbody>
+              </table>
+            </div>
+        </div>`;
+      }
 
-        const studentContentContainer = document.getElementById(`content_${this.currentStudentId}`);
-        const studentInfoHeader = studentContentContainer.querySelector('.border-2.border-blue-600').outerHTML;
-        const weeksContent = studentContentContainer.querySelector(`#weeks_${this.currentStudentId}`).outerHTML;
-        
+      async generateStudentReportAssets(student) {
         let totalMemorization = 0, totalReview = 0, totalAttendance = 0, totalAbsence = 0;
         let attendanceCounts = { 'حضر': 0, 'غاب': 0, 'مستأذن': 0 };
         let weeklyTotals = { labels: [], hifdh: [], murajaa: [] };
@@ -1416,6 +1460,19 @@
             weeklyTotals.murajaa.push(weeklyMurajaa);
         });
 
+        const studentInfoHeaderHtml = `
+          <div class="p-4 mb-6 bg-blue-50" style="border: 2px solid #3b82f6; border-radius: 0.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+              <div><span style="font-weight: bold;">اسم الطالب:</span> <span style="color: #1e40af; font-weight: bold;">${student.name}</span></div>
+              <div><span style="font-weight: bold;">المرحلة الدراسية:</span> <span style="color: #1e40af;">${student.grade}</span></div>
+              <div><span style="font-weight: bold;">السجل المدني:</span> <span style="color: #1e40af;">${student.civilId}</span></div>
+            </div>
+          </div>`;
+
+        const weeksContentHtml = (student.data.weeks || []).map((weekData, index) => 
+            this.createWeekTableForExport(weekData, index + 1)
+        ).join('');
+
         const summaryContent = `
           <div class="mt-6 p-4 bg-gray-50 border border-gray-300 rounded-lg">
             <h4 class="font-bold text-center text-lg mb-2">الملخص النهائي للطالب</h4>
@@ -1426,27 +1483,30 @@
               <div><p class="font-bold">أيام الغياب: <span class="text-red-600">${totalAbsence}</span></p></div>
             </div>
           </div>`;
-
+        
         const attendanceChartImg = await this.createChartImage({
             type: 'pie',
-            data: {
-                labels: ['حضور', 'غياب', 'استئذان'],
-                datasets: [{ data: [attendanceCounts['حضر'], attendanceCounts['غاب'], attendanceCounts['مستأذن']], backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'] }]
-            },
+            data: { labels: ['حضور', 'غياب', 'استئذان'], datasets: [{ data: [attendanceCounts['حضر'], attendanceCounts['غاب'], attendanceCounts['مستأذن']], backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'] }] },
             options: { plugins: { legend: { position: 'top' }, title: { display: true, text: 'سجل الحضور', font: { family: 'Amiri', size: 14 } } } }
         }, 400, 400);
 
         const progressChartImg = await this.createChartImage({
             type: 'bar',
-            data: {
-                labels: weeklyTotals.labels,
-                datasets: [
-                    { label: 'أوجه الحفظ', data: weeklyTotals.hifdh, backgroundColor: 'rgba(75, 192, 192, 0.7)' },
-                    { label: 'أوجه المراجعة', data: weeklyTotals.murajaa, backgroundColor: 'rgba(54, 162, 235, 0.7)' }
-                ]
-            },
+            data: { labels: weeklyTotals.labels, datasets: [ { label: 'أوجه الحفظ', data: weeklyTotals.hifdh, backgroundColor: 'rgba(75, 192, 192, 0.7)' }, { label: 'أوجه المراجعة', data: weeklyTotals.murajaa, backgroundColor: 'rgba(54, 162, 235, 0.7)' } ]},
             options: { plugins: { legend: { position: 'top' }, title: { display: true, text: 'الإنجاز الأسبوعي', font: { family: 'Amiri', size: 14 } } }, scales: { y: { beginAtZero: true } } }
         }, 800, 400);
+
+        return { summaryContent, attendanceChartImg, progressChartImg, studentInfoHeaderHtml, weeksContentHtml };
+      }
+      
+      async generatePrintableReport() {
+        if(!this.currentStudentId) return this.showMessage('الرجاء تحديد طالب لطباعة تقريره', 'warning');
+        
+        this.captureStudentData(this.currentStudentId);
+        const student = this.currentHalaqa.students.find(s => s.id === this.currentStudentId);
+        if(!student) return;
+
+        const { summaryContent, attendanceChartImg, progressChartImg, studentInfoHeaderHtml, weeksContentHtml } = await this.generateStudentReportAssets(student);
         
         const reportWindow = window.open('', '_blank');
         reportWindow.document.write(`
@@ -1459,7 +1519,6 @@
               .chart-section { padding-top: 3rem; } 
               .chart-container { display: flex; flex-direction: column; align-items: center; gap: 2rem; page-break-inside: avoid; }
               .chart-container img { max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-              .student-card .border-2 { border-color: #3b82f6 !important; }
               .week-table { page-break-inside: avoid; }
           </style>
           </head><body>
@@ -1468,8 +1527,8 @@
                   <p class="text-xl text-gray-700 mt-2">الحلقة: ${this.currentHalaqa.circleName} | المعلم: ${this.currentHalaqa.teacherName}</p>
               </div>
               <div>
-                  ${studentInfoHeader}
-                  ${weeksContent}
+                  ${studentInfoHeaderHtml}
+                  ${weeksContentHtml}
                   ${summaryContent}
               </div>
               <div class="chart-section">
@@ -1486,7 +1545,77 @@
         reportWindow.document.close();
       }
       
-      printHalaqaSummary() {
+      async generateFullHalaqaReport(format = 'print') {
+          if (!this.currentHalaqa || !this.currentHalaqa.students || this.currentHalaqa.students.length === 0) {
+              return this.showMessage('لا يوجد طلاب في هذه الحلقة لإنشاء تقرير', 'warning');
+          }
+          this.showMessage('جاري إعداد التقرير الشامل، قد يستغرق بعض الوقت...', 'info');
+
+          let allPagesHtml = '';
+          
+          for (const student of this.currentHalaqa.students) {
+              this.captureStudentData(student.id);
+              let { summaryContent, attendanceChartImg, progressChartImg, studentInfoHeaderHtml, weeksContentHtml } = await this.generateStudentReportAssets(student);
+
+              allPagesHtml += `
+                  <div class="print-page">
+                      <div class="header">
+                          <h1 class="text-3xl font-bold">تقرير الطالب: ${student.name}</h1>
+                          <p class="text-xl text-gray-700 mt-2">الحلقة: ${this.currentHalaqa.circleName} | المعلم: ${this.currentHalaqa.teacherName}</p>
+                      </div>
+                      <div>
+                          ${studentInfoHeaderHtml}
+                          ${weeksContentHtml}
+                          ${summaryContent}
+                      </div>
+                      <div class="chart-section">
+                          <h2 class="text-2xl font-bold text-center mb-6">الملخص البياني</h2>
+                          <div class="chart-container">
+                              <div class="w-full md:w-2/3"><img src="${progressChartImg}" alt="رسم بياني للإنجاز"></div>
+                              <div class="w-full md:w-1/3"><img src="${attendanceChartImg}" alt="رسم بياني للحضور"></div>
+                          </div>
+                      </div>
+                  </div>
+              `;
+          }
+
+          const reportTitle = `تقرير_كامل_حلقة_${this.currentHalaqa.circleName}`;
+          const finalHtml = `
+              <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${reportTitle}</title>
+              <script src="https://cdn.tailwindcss.com"><\/script>
+              <style>
+                  @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+                  body { font-family: 'Amiri', serif; }
+                  .print-page { page-break-after: always; padding: 1.5rem; }
+                  .header { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #666; padding-bottom: 1rem; }
+                  .chart-section { padding-top: 3rem; }
+                  .chart-container { display: flex; flex-direction: column; align-items: center; gap: 2rem; page-break-inside: avoid; }
+                  .chart-container img { max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                  .week-table { page-break-inside: avoid; }
+              </style>
+              </head><body>
+                  ${allPagesHtml}
+                  ${format === 'print' ? `<script>window.onload = () => { window.print(); }<\/script>` : ''}
+              </body></html>`;
+
+          if (format === 'print') {
+              const reportWindow = window.open('', '_blank');
+              reportWindow.document.write(finalHtml);
+              reportWindow.document.close();
+          } else if (format === 'word') {
+              const blob = new Blob(['\ufeff', finalHtml], { type: 'application/msword' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `${reportTitle}.doc`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+          }
+          this.showMessage('تم إنشاء التقرير الشامل بنجاح!', 'success');
+      }
+
+      printStudentSummary() {
         if (!this.currentStudentId) {
             this.showMessage('يرجى تحديد طالب أولاً لطباعة ملخصه', 'warning');
             return;
@@ -1592,7 +1721,7 @@
         else if (type === 'warning') statusDiv.classList.add('bg-yellow-100', 'text-yellow-800');
         else statusDiv.classList.add('bg-blue-100', 'text-blue-800');
         statusDiv.classList.remove('hidden');
-        if (type === 'success' || type === 'error') { // Keep warning message until next action
+        if (type === 'success' || type === 'error' || type === 'info') {
             setTimeout(() => statusDiv.classList.add('hidden'), 3000);
         }
       }
