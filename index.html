@@ -272,6 +272,17 @@
     </div>
   </div>
 
+  <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md text-center shadow-2xl">
+      <h3 id="confirmModalTitle" class="text-xl font-bold mb-4 text-red-700">تأكيد الإجراء</h3>
+      <p id="confirmModalMessage" class="text-gray-600 mb-6"></p>
+      <div class="flex gap-4 justify-center">
+        <button id="confirmModalBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">نعم، تأكيد</button>
+        <button id="cancelConfirmModalBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -492,6 +503,23 @@
         }
       }
 
+      showConfirmModal(title, message, onConfirm) {
+        const modal = document.getElementById('confirmModal');
+        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('confirmModalMessage').textContent = message;
+        
+        const confirmBtn = document.getElementById('confirmModalBtn');
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.onclick = () => {
+            onConfirm();
+            modal.classList.add('hidden');
+        };
+
+        modal.classList.remove('hidden');
+      }
+
       shareHalaqa(halaqaId) {
         try {
           const baseUrl = window.location.href.split('#')[0];
@@ -520,14 +548,22 @@
       }
 
       deleteHalaqaFromMen(halaqaId) {
-        const idx = this.appData.men.findIndex(h => h.id === halaqaId);
-        if (idx > -1) {
-          const originalData = JSON.parse(JSON.stringify(this.appData));
-          this.appData.men.splice(idx, 1);
-          this.renderDashboard();
-          this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الحلقة بنجاح', 'warning'))
-            .catch(() => { this.appData = originalData; this.renderDashboard(); });
-        }
+        const halaqa = this.appData.men.find(h => h.id === halaqaId);
+        if (!halaqa) return;
+        this.showConfirmModal(
+            'تأكيد حذف الحلقة',
+            `هل أنت متأكد من رغبتك في حذف حلقة "${halaqa.circleName}"؟`,
+            () => {
+                const idx = this.appData.men.findIndex(h => h.id === halaqaId);
+                if (idx > -1) {
+                  const originalData = JSON.parse(JSON.stringify(this.appData));
+                  this.appData.men.splice(idx, 1);
+                  this.renderDashboard();
+                  this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الحلقة بنجاح', 'warning'))
+                    .catch(() => { this.appData = originalData; this.renderDashboard(); });
+                }
+            }
+        );
       }
 
       addNewDar() {
@@ -543,14 +579,22 @@
       }
 
       deleteDar(darId) {
-        const idx = this.appData.women.findIndex(d => d.id === darId);
-        if (idx > -1) {
-          const originalData = JSON.parse(JSON.stringify(this.appData));
-          this.appData.women.splice(idx, 1);
-          this.renderDashboard();
-          this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الدار بنجاح', 'warning'))
-            .catch(() => { this.appData = originalData; this.renderDashboard(); });
-        }
+        const dar = this.appData.women.find(d => d.id === darId);
+        if (!dar) return;
+        this.showConfirmModal(
+            'تأكيد حذف الدار',
+            `هل أنت متأكد من رغبتك في حذف دار "${dar.name}"؟ سيتم حذف جميع الحلقات بداخلها.`,
+            () => {
+                const idx = this.appData.women.findIndex(d => d.id === darId);
+                if (idx > -1) {
+                  const originalData = JSON.parse(JSON.stringify(this.appData));
+                  this.appData.women.splice(idx, 1);
+                  this.renderDashboard();
+                  this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الدار بنجاح', 'warning'))
+                    .catch(() => { this.appData = originalData; this.renderDashboard(); });
+                }
+            }
+        );
       }
       
       addNewHalaqaToDar(darId) {
@@ -572,17 +616,25 @@
       }
 
       deleteHalaqaFromDar(darId, halaqaId) {
-        const originalData = JSON.parse(JSON.stringify(this.appData));
         const dar = this.appData.women.find(d => d.id === darId);
-        if (dar && dar.halaqas) {
-          const idx = dar.halaqas.findIndex(h => h.id === halaqaId);
-          if (idx > -1) {
-            dar.halaqas.splice(idx, 1);
-            this.renderDashboard();
-            this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الحلقة بنجاح', 'warning'))
-              .catch(() => { this.appData = originalData; this.renderDashboard(); });
-          }
-        }
+        if (!dar || !dar.halaqas) return;
+        const halaqa = dar.halaqas.find(h => h.id === halaqaId);
+        if (!halaqa) return;
+
+        this.showConfirmModal(
+            'تأكيد حذف الحلقة',
+            `هل أنت متأكد من رغبتك في حذف حلقة "${halaqa.circleName}" من دار "${dar.name}"؟`,
+            () => {
+                const originalData = JSON.parse(JSON.stringify(this.appData));
+                const idx = dar.halaqas.findIndex(h => h.id === halaqaId);
+                if (idx > -1) {
+                  dar.halaqas.splice(idx, 1);
+                  this.renderDashboard();
+                  this.saveData().then(() => this.halaqaManager.showMessage('تم حذف الحلقة بنجاح', 'warning'))
+                    .catch(() => { this.appData = originalData; this.renderDashboard(); });
+                }
+            }
+        );
       }
 
       editHalaqa(darId, halaqaId) {
@@ -1754,6 +1806,7 @@
         }
     });
     document.getElementById('closeEditModalBtn').addEventListener('click', () => document.getElementById('editModal').classList.add('hidden'));
+    document.getElementById('cancelConfirmModalBtn').addEventListener('click', () => document.getElementById('confirmModal').classList.add('hidden'));
     
 
     // --- Analytics & Roster View Controls ---
