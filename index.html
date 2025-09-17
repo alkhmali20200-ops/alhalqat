@@ -985,21 +985,11 @@
         const student = this.currentHalaqa.students.find(s => s.id === studentId);
         if (!student) return;
 
-        const modal = document.getElementById('deleteStudentModal');
-        const message = document.getElementById('deleteStudentMessage');
-        const confirmBtn = document.getElementById('confirmDeleteStudentBtn');
-
-        message.textContent = `هل أنت متأكد من رغبتك في حذف الطالب "${student.name}"؟ لا يمكن التراجع عن هذا الإجراء.`;
-        
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-        newConfirmBtn.onclick = () => {
-            this.performStudentDeletion(studentId);
-            modal.classList.add('hidden');
-        };
-
-        modal.classList.remove('hidden');
+        this.app.showConfirmModal(
+            'تأكيد حذف الطالب',
+            `هل أنت متأكد من رغبتك في حذف الطالب "${student.name}"؟ لا يمكن التراجع عن هذا الإجراء.`,
+            () => this.performStudentDeletion(studentId)
+        );
       }
       
       editStudent(studentId) {
@@ -1124,12 +1114,12 @@
         if (!this.currentHalaqa.studentIdCounter) this.currentHalaqa.studentIdCounter = (this.currentHalaqa.students || []).length + 1;
         const studentId = `student_${this.currentHalaqa.id}_${this.currentHalaqa.studentIdCounter++}`;
         
-        const sequentialDates = this.getSequentialHijriDates(new Date());
+        const gregorianDates = this.getSequentialGregorianDates(new Date());
         const newStudent = {
           id: studentId, name: studentName,
           grade: document.getElementById('newStudentGrade').value.trim(),
           civilId: document.getElementById('newStudentCivilId').value.trim(),
-          data: { weeks: [{ days: sequentialDates.map(d => ({ date: d })) }] }
+          data: { weeks: [{ days: gregorianDates.map(d => ({ date: this.getHijriDateString(d), gregorianDate: d.toISOString() })) }] }
         };
 
         if (!this.currentHalaqa.students) this.currentHalaqa.students = [];
@@ -1155,15 +1145,31 @@
         if (!this.currentStudentId) return this.showMessage('يرجى اختيار طالب أولاً', 'warning');
         const student = this.currentHalaqa.students.find(s => s.id === this.currentStudentId);
         if (student) {
-          if (!student.data.weeks) student.data.weeks = [];
-          
-          const sequentialDates = this.getSequentialHijriDates(new Date());
-          student.data.weeks.push({ days: sequentialDates.map(d => ({ date: d })) });
+            if (!student.data.weeks) student.data.weeks = [];
+            
+            let nextWeekStartDate = new Date();
+            
+            if (student.data.weeks.length > 0) {
+                const lastWeek = student.data.weeks[student.data.weeks.length - 1];
+                if (lastWeek && lastWeek.days && lastWeek.days.length > 0) {
+                    const lastDayOfLastWeek = lastWeek.days[lastWeek.days.length - 1];
+                    if (lastDayOfLastWeek && lastDayOfLastWeek.gregorianDate) {
+                        const lastGregorianDate = new Date(lastDayOfLastWeek.gregorianDate);
+                        // The last day is Wednesday, new week starts on Sunday (4 days later)
+                        lastGregorianDate.setDate(lastGregorianDate.getDate() + 4);
+                        nextWeekStartDate = lastGregorianDate;
+                    }
+                }
+            }
 
-          const weeksContainer = document.getElementById(`weeks_${this.currentStudentId}`);
-          const newWeekData = student.data.weeks[student.data.weeks.length - 1];
-          weeksContainer.insertAdjacentHTML('beforeend', this.createWeekTableWithData(student.id, newWeekData, student.data.weeks.length));
-          this.captureAndSaveHalaqa(); // Save automatically after adding a week
+            const newGregorianDates = this.getSequentialGregorianDates(nextWeekStartDate);
+            const newWeek = { days: newGregorianDates.map(d => ({ date: this.getHijriDateString(d), gregorianDate: d.toISOString() })) };
+            student.data.weeks.push(newWeek);
+
+            const weeksContainer = document.getElementById(`weeks_${this.currentStudentId}`);
+            weeksContainer.insertAdjacentHTML('beforeend', this.createWeekTableWithData(student.id, newWeek, student.data.weeks.length));
+            
+            this.captureAndSaveHalaqa();
         }
       }
 
@@ -1227,12 +1233,12 @@
         }
       }
 
-      getSequentialHijriDates(baseDate) {
+      getSequentialGregorianDates(baseDate) {
         const dates = [];
         for (let i = 0; i < 4; i++) {
             const targetDate = new Date(baseDate);
             targetDate.setDate(baseDate.getDate() + i);
-            dates.push(this.getHijriDateString(targetDate));
+            dates.push(targetDate);
         }
         return dates;
       }
@@ -1383,6 +1389,13 @@
                   if (!isNaN(dayIndex) && field) {
                       if (!currentWeekInModel.days[dayIndex]) {
                         currentWeekInModel.days[dayIndex] = {};
+                      }
+                      
+                      if(!currentWeekInModel.days[dayIndex].gregorianDate) {
+                        const originalDay = student.data.weeks[weekIndex]?.days[dayIndex];
+                        if(originalDay && originalDay.gregorianDate) {
+                          currentWeekInModel.days[dayIndex].gregorianDate = originalDay.gregorianDate;
+                        }
                       }
                       currentWeekInModel.days[dayIndex][field] = input.value;
                   }
