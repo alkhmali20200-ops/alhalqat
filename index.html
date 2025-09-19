@@ -21,13 +21,14 @@
       body, .container { margin: 0; padding: 0; box-shadow: none; border: none; font-size: 10px; }
       .no-print { display: none !important; }
       .view { display: none !important; }
-      #analyticsView, #rosterView, #halaqaView { display: block !important; }
+      #analyticsView, #rosterView, #halaqaView, #certificateView { display: block !important; }
       #print-header { display: block; text-align: center; margin-bottom: 1rem; border-bottom: 2px solid #333; padding-bottom: 1rem;}
     }
     input, select, textarea { border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 8px; font-family: 'Amiri', serif; background-color: transparent; }
-    .student-tab { transition: all 0.3s ease; cursor: pointer; border-right: 4px solid transparent; }
-    .student-tab.active { border-right-color: #3b82f6; background-color: #eff6ff; color: #1e40af; font-weight: bold; }
-    .student-tab:hover { background-color: #f3f4f6; }
+    .student-tab { transition: all 0.3s ease; cursor: pointer; }
+    .student-tab.active { background-color: #3b82f6; color: white; border-color: #2563eb; }
+    .student-tab:hover { background-color: #e5e7eb; }
+    .student-tab.active:hover { background-color: #2563eb; }
     .student-content, .view { display: none; }
     .view.active { display: block; }
     .student-content.active { display: block; }
@@ -65,6 +66,7 @@
       <div class="flex flex-col sm:flex-row justify-center gap-4 sm:gap-8">
         <button id="selectMenBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-lg text-xl shadow-lg transition-transform transform hover:scale-105">قسم الرجال</button>
         <button id="selectWomenBtn" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 px-10 rounded-lg text-xl shadow-lg transition-transform transform hover:scale-105">قسم النساء</button>
+        <button id="showCertificatesBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-10 rounded-lg text-xl shadow-lg transition-transform transform hover:scale-105">شهادات الشكر</button>
       </div>
       <p id="firebase-status" class="mt-8 text-gray-400 text-sm">جاري تهيئة التطبيق...</p>
     </div>
@@ -151,17 +153,13 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-                <div class="md:col-span-1 border-l border-gray-200 pl-4">
-                    <h4 class="font-bold mb-3 text-gray-600">قائمة الطلاب</h4>
-                    <div id="studentsTabsContainer"></div>
-                </div>
-                <div class="md:col-span-3">
-                    <div id="studentsContentContainer"></div>
-                    <div id="addWeekContainer" class="mt-6">
-                       <button id="addWeekBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold w-full sm:w-auto">➕ إضافة أسبوع للطالب الحالي</button>
-                    </div>
-                </div>
+            <div id="studentsTabsContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-6">
+                <!-- Student cards will be injected here -->
+            </div>
+            <hr class="mb-6">
+            <div id="studentsContentContainer"></div>
+            <div id="addWeekContainer" class="mt-6">
+                <button id="addWeekBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold w-full sm:w-auto">➕ إضافة أسبوع للطالب الحالي</button>
             </div>
           </div>
         </div>
@@ -170,13 +168,8 @@
         <div class="lg:col-span-1 space-y-6">
             <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200 sticky top-6">
                 <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">لوحة التحكم والتقارير</h3>
-                
-                <div class="space-y-3">
-                    <button id="saveChangesBtn" class="w-full text-lg bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-bold flex items-center justify-center gap-2">💾 <span>حفظ التغييرات</span></button>
-                    <button id="calculateBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-bold flex items-center justify-center gap-2">🧮 <span>حساب المجاميع</span></button>
-                </div>
+                <div id="saveStatus" class="mb-4 p-3 rounded-lg hidden text-center"></div>
 
-                <hr class="my-6">
                 <h4 class="font-bold mb-3 text-gray-600">تقارير الطالب المحدد</h4>
                 <div class="space-y-3">
                     <button id="printBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-bold">📄 طباعة تقرير الطالب</button>
@@ -200,7 +193,6 @@
                         <div><p class="text-xl font-bold text-red-600" id="halaqaTotalAbsence">0</p><p class="text-xs text-gray-600">إجمالي الغياب</p></div>
                     </div>
                 </div>
-                 <div id="saveStatus" class="mt-4 p-3 rounded-lg hidden text-center"></div>
             </div>
         </div>
       </div>
@@ -237,6 +229,47 @@
         <!-- Roster table will be generated here -->
       </div>
     </div>
+
+    <!-- View 6: Certificates -->
+    <div id="certificateView" class="view">
+      <div class="flex justify-between items-center mb-6 no-print">
+        <h2 class="text-3xl font-bold text-gray-800">إصدار شهادات الشكر</h2>
+        <button id="backToSectionsFromCertsBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">→ العودة للقائمة الرئيسية</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+            <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">بيانات الشهادة</h3>
+            <div class="space-y-4">
+              <div>
+                <label for="certStudentName" class="block text-sm font-medium text-gray-700 mb-1">اسم الطالب/ة</label>
+                <input type="text" id="certStudentName" class="w-full p-2 border rounded-md" placeholder="مثال: عبدالله بن محمد">
+              </div>
+              <div>
+                <label for="certReason" class="block text-sm font-medium text-gray-700 mb-1">سبب التكريم</label>
+                <input type="text" id="certReason" class="w-full p-2 border rounded-md" placeholder="مثال: لإتمامه حفظ جزء عم">
+              </div>
+              <div>
+                <label for="certSignatory" class="block text-sm font-medium text-gray-700 mb-1">اسم المسؤول (للتوقيع)</label>
+                <input type="text" id="certSignatory" class="w-full p-2 border rounded-md" placeholder="مثال: مدير المركز">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">اختر التصميم</label>
+                <div class="flex gap-4">
+                  <label class="flex items-center gap-2"><input type="radio" name="certTemplate" value="male" checked> <span>رجالي</span></label>
+                  <label class="flex items-center gap-2"><input type="radio" name="certTemplate" value="female"> <span>نسائي</span></label>
+                </div>
+              </div>
+              <button id="printCertBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg mt-4">معاينة وطباعة الشهادة</button>
+            </div>
+        </div>
+        <div class="md:col-span-2">
+            <div id="certPreview" class="p-4 bg-gray-200 rounded-lg">
+                <p class="text-center text-gray-500">سيظهر شكل الشهادة هنا...</p>
+            </div>
+        </div>
+      </div>
+    </div>
+
 
   </div>
 
@@ -337,7 +370,7 @@
         try {
           const firebaseConfig = JSON.parse(__firebase_config);
 
-          if (firebaseConfig.apiKey === "YOUR_API_KEY" || !firebaseConfig.apiKey) {
+          if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
              document.getElementById('firebase-status').textContent = 'وضع المعاينة (بيانات Firebase غير مكتملة)';
              this.handleDirectLinkAfterDataLoad(); 
              return; 
@@ -375,18 +408,24 @@
         }
         const ref = doc(this.db, "artifacts", appId, "public", "data");
         this.unsubscribe = onSnapshot(ref, (snap) => {
+          let freshData;
           if (snap.exists()) {
-            const data = snap.data();
-            this.appData = { men: data.men || [], women: data.women || [] };
+            freshData = snap.data();
           } else {
-            this.appData = { men: [], women: [] };
-            this.saveData();
+            freshData = { men: [], women: [] };
           }
+          this.appData = { men: freshData.men || [], women: freshData.women || [] };
+         
+          if (!snap.exists()) {
+             this.saveData(); 
+          }
+
           if (!this.initialLinkHandled) this.handleDirectLinkAfterDataLoad();
           
           const currentView = document.querySelector('.view.active').id;
           if (currentView === 'halaqaView' && this.halaqaManager.currentHalaqa) {
-              this.openHalaqa(this.currentHalaqaId);
+              // Now we don't forcefully reload, to prevent disrupting the user
+              // The user will see updates when they re-open the halaqa
           } else if (currentView === 'rosterView') {
               this.showRoster();
           } else if (currentView === 'dashboardView' && this.currentSection) {
@@ -432,6 +471,7 @@
         if (viewToShow) {
           viewToShow.classList.add('active');
           if (viewId === 'dashboardView') this.renderDashboard();
+          if (viewId === 'certificateView') this.halaqaManager.previewCertificate();
         } else {
           document.getElementById('selectionView').classList.add('active');
         }
@@ -465,15 +505,22 @@
           } else {
             halaqas.forEach(halaqa => {
               const card = document.createElement('div');
-              card.className = 'bg-white p-6 rounded-lg shadow-md border border-gray-200';
+              card.className = 'bg-white p-6 rounded-lg shadow-lg border-t-4 border-blue-500';
               card.innerHTML = `
-                <h3 class="text-lg font-bold text-blue-800">${halaqa.circleName}</h3>
-                <p class="text-gray-600 mb-4">${halaqa.teacherName}</p>
-                <div class="flex gap-2 mt-4 flex-wrap">
-                  <button data-halaqa-id="${halaqa.id}" class="open-halaqa-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm">فتح</button>
-                  <button data-halaqa-id="${halaqa.id}" class="edit-halaqa-btn flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm">تعديل</button>
-                  <button data-halaqa-id="${halaqa.id}" class="share-halaqa-btn flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">مشاركة</button>
-                  <button data-halaqa-id="${halaqa.id}" class="delete-halaqa-btn flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-sm">حذف</button>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">${halaqa.circleName}</h3>
+                        <p class="text-gray-500">${halaqa.teacherName}</p>
+                    </div>
+                    <div class="text-blue-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-6 pt-4 border-t">
+                  <button data-halaqa-id="${halaqa.id}" title="فتح" class="open-halaqa-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-lg flex justify-center items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></button>
+                  <button data-halaqa-id="${halaqa.id}" title="تعديل" class="edit-halaqa-btn flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold p-2 rounded-lg flex justify-center items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
+                  <button data-halaqa-id="${halaqa.id}" title="مشاركة" class="share-halaqa-btn flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold p-2 rounded-lg flex justify-center items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg></button>
+                  <button data-halaqa-id="${halaqa.id}" title="حذف" class="delete-halaqa-btn flex-1 bg-red-500 hover:bg-red-600 text-white font-bold p-2 rounded-lg flex justify-center items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                 </div>`;
               listContainer.appendChild(card);
             });
@@ -499,17 +546,22 @@
               darContainer.style.borderColor = color;
 
               let halaqaCardsHTML = (dar.halaqas || []).map(halaqa => `
-                <div class="bg-gray-50 p-4 rounded-md border flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                  <div>
-                    <h4 class="font-bold text-gray-800">${halaqa.circleName}</h4>
-                    <p class="text-sm text-gray-500">المعلمة: ${halaqa.teacherName}</p>
-                  </div>
-                  <div class="flex gap-2 flex-shrink-0 flex-wrap">
-                    <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" class="open-halaqa-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded-md text-sm">فتح</button>
-                    <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" class="edit-halaqa-btn bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md text-sm">تعديل</button>
-                    <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" class="share-halaqa-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-md text-sm">مشاركة</button>
-                    <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" class="delete-halaqa-btn bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-sm">حذف</button>
-                  </div>
+                <div class="flex items-center justify-between py-3 border-b last:border-b-0">
+                    <div class="flex items-center gap-4">
+                        <div class="p-2 rounded-full" style="background-color: ${color}2A; color: ${color};">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">${halaqa.circleName}</h4>
+                            <p class="text-sm text-gray-500">المعلمة: ${halaqa.teacherName}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 flex-shrink-0 flex-wrap">
+                        <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" title="فتح" class="open-halaqa-btn bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-md flex justify-center items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></button>
+                        <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" title="تعديل" class="edit-halaqa-btn bg-yellow-500 hover:bg-yellow-600 text-white font-bold p-2 rounded-md flex justify-center items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
+                        <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" title="مشاركة" class="share-halaqa-btn bg-gray-500 hover:bg-gray-600 text-white font-bold p-2 rounded-md flex justify-center items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg></button>
+                        <button data-dar-id="${dar.id}" data-halaqa-id="${halaqa.id}" title="حذف" class="delete-halaqa-btn bg-red-500 hover:bg-red-600 text-white font-bold p-2 rounded-md flex justify-center items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    </div>
                 </div>
               `).join('');
 
@@ -518,7 +570,7 @@
                   <h3 class="text-2xl font-bold" style="color: ${color};">${dar.name}</h3>
                   <button data-dar-id="${dar.id}" class="delete-dar-btn bg-red-100 text-red-700 hover:bg-red-200 font-bold py-1 px-3 rounded-md">حذف الدار</button>
                 </div>
-                <div class="p-4 space-y-4">
+                <div class="p-4">
                   <div>${halaqaCardsHTML || '<p class="text-gray-500">لا توجد حلقات في هذه الدار بعد.</p>'}</div>
                   <div class="bg-gray-50 p-4 rounded-lg border border-dashed mt-4">
                     <h4 class="font-bold mb-3">إضافة حلقة جديدة لهذه الدار</h4>
@@ -634,7 +686,7 @@
         const teacherNameInput = document.getElementById(`newTeacherName_${darId}`);
         const circleName = halaqaNameInput.value.trim();
         const teacherName = teacherNameInput.value.trim();
-        if (!circleName || !teacherName) { return this.halaqaManager.showMessage('يرجى إدخال اسم الحلقة واسم المعلمة', 'warning'); }
+        if (!circleName || !teacherName) { return this.halaqaManager.showMessage('يرجى إدخال اسم الحلقة واسم المعلمة', 'warning'); return; }
         const originalData = JSON.parse(JSON.stringify(this.appData));
         const dar = this.appData.women.find(d => d.id === darId);
         if (dar) {
@@ -1016,7 +1068,7 @@
                     }
                 } catch (error) {
                     console.error("Restore failed:", error);
-                    this.halaqaManager.showMessage(`فشل في استعادة البيانات: ${error.message}`, 'error');
+                    this.showMessage(`فشل في استعادة البيانات: ${error.message}`, 'error');
                 }
             };
             reader.readAsText(file);
@@ -1032,30 +1084,28 @@
         this.currentHalaqa = null;
         this.currentStudentId = null;
         this.studentToEditId = null; 
+        this.debounceTimer = null;
         this.initializeEventListeners();
       }
 
       initializeEventListeners() {
         document.getElementById('addStudentBtn').addEventListener('click', () => this.addStudent());
         document.getElementById('addWeekBtn').addEventListener('click', () => this.addWeekToCurrentStudent());
-        document.getElementById('calculateBtn').addEventListener('click', () => this.calculateAllTotals());
         document.getElementById('printBtn').addEventListener('click', () => this.generatePrintableReport());
         document.getElementById('exportBtn').addEventListener('click', () => this.exportHalaqaToCSV());
         document.getElementById('printSummaryBtn').addEventListener('click', () => this.printStudentSummary());
-
-        // New Buttons
         document.getElementById('printAllStudentsBtn').addEventListener('click', () => this.generateFullHalaqaReport('print'));
         document.getElementById('exportAllStudentsToWordBtn').addEventListener('click', () => this.generateFullHalaqaReport('word'));
         
-        document.getElementById('saveChangesBtn').addEventListener('click', async () => {
-            this.showMessage('جاري حفظ التغييرات...', 'info');
-            await this.captureAndSaveHalaqa();
-            this.showMessage('تم حفظ جميع التغييرات بنجاح!', 'success');
-        });
-
         document.getElementById('halaqaView').addEventListener('input', (e) => {
-           if(e.target.closest('.student-content') || e.target.closest('.no-print.border-2')) {
-                this.showMessage('لديك تغييرات غير محفوظة. اضغط على زر الحفظ.', 'warning');
+           if(e.target.closest('#studentsContentContainer') || e.target.closest('.no-print.p-4')) {
+                this.showMessage('جاري الحفظ...', 'info');
+                clearTimeout(this.debounceTimer);
+                this.debounceTimer = setTimeout(async () => {
+                    await this.captureAndSaveHalaqa();
+                    this.calculateAllTotals();
+                    this.showMessage('تم الحفظ وتحديث الملخص تلقائياً!', 'success');
+                }, 1500);
            }
         });
         
@@ -1180,8 +1230,12 @@
           this.createStudentTab(student);
           this.createStudentContentWithData(student);
         });
-        if (this.currentHalaqa.students && this.currentHalaqa.students.length > 0) this.switchToStudent(this.currentHalaqa.students[0].id);
-        else this.currentStudentId = null;
+        if (this.currentHalaqa.students && this.currentHalaqa.students.length > 0) {
+            this.switchToStudent(this.currentHalaqa.students[0].id);
+        } else {
+            this.currentStudentId = null;
+            document.getElementById('studentsContentContainer').innerHTML = '<p class="text-center text-gray-500 p-8">لا يوجد طلاب في هذه الحلقة. قم بإضافة طالب جديد للبدء.</p>';
+        }
       }
 
       async captureAndSaveHalaqa() {
@@ -1200,12 +1254,11 @@
         if (!this.currentHalaqa.studentIdCounter) this.currentHalaqa.studentIdCounter = (this.currentHalaqa.students || []).length + 1;
         const studentId = `student_${this.currentHalaqa.id}_${this.currentHalaqa.studentIdCounter++}`;
         
-        const gregorianDates = this.getSequentialGregorianDates(new Date());
         const newStudent = {
           id: studentId, name: studentName,
           grade: document.getElementById('newStudentGrade').value.trim(),
           civilId: document.getElementById('newStudentCivilId').value.trim(),
-          data: { weeks: [{ days: gregorianDates.map(d => ({ date: this.getHijriDateString(d), gregorianDate: d.toISOString() })) }] }
+          data: { weeks: [{ days: Array(4).fill({}).map(() => ({ date: '' })) }] }
         };
 
         if (!this.currentHalaqa.students) this.currentHalaqa.students = [];
@@ -1215,7 +1268,7 @@
         this.switchToStudent(studentId);
         nameInput.value = ''; document.getElementById('newStudentGrade').value = ''; document.getElementById('newStudentCivilId').value = '';
         this.captureAndSaveHalaqa(); // Save automatically after adding a student
-        this.showMessage('تم إضافة الطالب بنجاح! لا تنس حفظ أي تغييرات في الجدول.', 'success');
+        this.showMessage('تم إضافة الطالب بنجاح!', 'success');
       }
       
       switchToStudent(studentId) {
@@ -1225,6 +1278,7 @@
         document.querySelectorAll('.student-content').forEach(c => c.classList.remove('active'));
         document.getElementById(`tab_${studentId}`).classList.add('active');
         document.getElementById(`content_${studentId}`).classList.add('active');
+        this.calculateAllTotals(); // Calculate totals when switching to a student
       }
 
       addWeekToCurrentStudent() {
@@ -1232,29 +1286,10 @@
         const student = this.currentHalaqa.students.find(s => s.id === this.currentStudentId);
         if (student) {
             if (!student.data.weeks) student.data.weeks = [];
-            
-            let nextWeekStartDate = new Date();
-            
-            if (student.data.weeks.length > 0) {
-                const lastWeek = student.data.weeks[student.data.weeks.length - 1];
-                if (lastWeek && lastWeek.days && lastWeek.days.length > 0) {
-                    const lastDayOfLastWeek = lastWeek.days[lastWeek.days.length - 1];
-                    if (lastDayOfLastWeek && lastDayOfLastWeek.gregorianDate) {
-                        const lastGregorianDate = new Date(lastDayOfLastWeek.gregorianDate);
-                        // The last day is Wednesday, new week starts on Sunday (4 days later)
-                        lastGregorianDate.setDate(lastGregorianDate.getDate() + 4);
-                        nextWeekStartDate = lastGregorianDate;
-                    }
-                }
-            }
-
-            const newGregorianDates = this.getSequentialGregorianDates(nextWeekStartDate);
-            const newWeek = { days: newGregorianDates.map(d => ({ date: this.getHijriDateString(d), gregorianDate: d.toISOString() })) };
+            const newWeek = { days: Array(4).fill({}).map(() => ({ date: '' })) };
             student.data.weeks.push(newWeek);
-
             const weeksContainer = document.getElementById(`weeks_${this.currentStudentId}`);
             weeksContainer.insertAdjacentHTML('beforeend', this.createWeekTableWithData(student.id, newWeek, student.data.weeks.length));
-            
             this.captureAndSaveHalaqa();
         }
       }
@@ -1263,12 +1298,12 @@
         const tabsContainer = document.getElementById('studentsTabsContainer');
         const tab = document.createElement('div');
         tab.id = `tab_${student.id}`;
-        tab.className = 'student-tab p-3 flex items-center justify-between border-b border-gray-200';
+        tab.className = 'student-tab p-4 rounded-lg border border-gray-200 flex flex-col items-center justify-center text-center shadow-sm';
         tab.innerHTML = `
-          <span class="flex-1 select-none">${student.name}</span>
-          <div class="flex items-center gap-2">
-              <button data-student-id="${student.id}" class="edit-student-btn action-btn text-blue-500 hover:text-blue-700 text-lg">✏️</button>
-              <button data-student-id="${student.id}" class="delete-student-btn action-btn text-red-500 hover:text-red-700 text-lg">✕</button>
+          <span class="font-bold text-gray-700">${student.name}</span>
+          <div class="flex items-center gap-3 mt-3">
+              <button data-student-id="${student.id}" title="تعديل" class="edit-student-btn action-btn text-blue-500 hover:text-blue-700 text-lg">✏️</button>
+              <button data-student-id="${student.id}" title="حذف" class="delete-student-btn action-btn text-red-500 hover:text-red-700 text-lg">✕</button>
           </div>`;
         tab.querySelector('.edit-student-btn').addEventListener('click', (e) => { e.stopPropagation(); this.editStudent(student.id); });
         tab.querySelector('.delete-student-btn').addEventListener('click', (e) => { e.stopPropagation(); this.removeStudent(student.id); });
@@ -1334,8 +1369,10 @@
 
       createWeekTableWithData(studentId, weekData, weekNumber) {
         const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء'];
-        const createTextField = (dayIndex, field, placeholder = '', value = '', type = 'text') =>
-          `<input type="${type}" placeholder="${placeholder}" value="${value || ''}" class="w-full text-center border-gray-300 rounded" data-day-index="${dayIndex}" data-field="${field}">`;
+        const createTextField = (dayIndex, field, placeholder = '', value = '', type = 'text', step = null) => {
+          const stepAttr = step ? ` step="${step}"` : '';
+          return `<input type="${type}" placeholder="${placeholder}" value="${value || ''}" class="w-full text-center border-gray-300 rounded"${stepAttr} data-day-index="${dayIndex}" data-field="${field}">`;
+        };
         const createTextArea = (dayIndex, field, placeholder = '', value = '') =>
           `<textarea placeholder="${placeholder}" class="w-full border-gray-300 rounded text-sm p-1" rows="2" data-day-index="${dayIndex}" data-field="${field}">${value || ''}</textarea>`;
         const createAttendanceSelect = (dayIndex, field, value = '') =>
@@ -1362,7 +1399,7 @@
             <div class="flex justify-between items-center mb-4">
               <h5 class="font-bold text-lg text-blue-800">${day}</h5>
               <div class="w-1/2">
-                ${createTextField(dayIndex, 'date', '', dayData.date)}
+                ${createTextField(dayIndex, 'date', 'dd/mm/yyyy', dayData.date)}
               </div>
             </div>
             <div class="mb-4">
@@ -1376,7 +1413,7 @@
                 <label class="block text-sm font-medium">من</label> ${createTextField(dayIndex, 'hifdhFrom', 'آية', dayData.hifdhFrom)}
                 <label class="block text-sm font-medium">إلى</label> ${createTextField(dayIndex, 'hifdhTo', 'آية', dayData.hifdhTo)}
                 <label class="block text-sm font-medium">التقدير</label> ${createGradeSelect(dayIndex, 'hifdhGrade', dayData.hifdhGrade)}
-                <label class="block text-sm font-medium">عدد الأوجه</label> ${createTextField(dayIndex, 'hifdhFaces', '0', dayData.hifdhFaces, 'number')}
+                <label class="block text-sm font-medium">عدد الأوجه</label> ${createTextField(dayIndex, 'hifdhFaces', '0', dayData.hifdhFaces, 'number', '0.5')}
               </div>
             </div>
             <div class="bg-green-50 p-3 rounded-lg border border-green-200 mt-3">
@@ -1386,7 +1423,7 @@
                 <label class="block text-sm font-medium">من</label> ${createTextField(dayIndex, 'murajaaFrom', 'آية', dayData.murajaaFrom)}
                 <label class="block text-sm font-medium">إلى</label> ${createTextField(dayIndex, 'murajaaTo', 'آية', dayData.murajaaTo)}
                 <label class="block text-sm font-medium">التقدير</label> ${createGradeSelect(dayIndex, 'murajaaGrade', dayData.murajaaGrade)}
-                <label class="block text-sm font-medium">عدد الأوجه</label> ${createTextField(dayIndex, 'murajaaFaces', '0', dayData.murajaaFaces, 'number')}
+                <label class="block text-sm font-medium">عدد الأوجه</label> ${createTextField(dayIndex, 'murajaaFaces', '0', dayData.murajaaFaces, 'number', '0.5')}
               </div>
             </div>
             <div class="mt-3">
@@ -1400,24 +1437,27 @@
           const dayData = weekData.days?.[dayIndex] || {};
           return `<tr>
             <td class="border p-2 font-bold bg-gray-50">${day}</td>
-            <td class="border p-1">${createTextField(dayIndex, 'date', '', dayData.date)}</td>
+            <td class="border p-1">${createTextField(dayIndex, 'date', 'dd/mm/yyyy', dayData.date)}</td>
             <td class="border p-1">${createAttendanceSelect(dayIndex, 'attendance', dayData.attendance)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'hifdhSurah', 'السورة', dayData.hifdhSurah)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'hifdhFrom', 'آية', dayData.hifdhFrom)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'hifdhTo', 'آية', dayData.hifdhTo)}</td>
             <td class="border p-1">${createGradeSelect(dayIndex, 'hifdhGrade', dayData.hifdhGrade)}</td>
-            <td class="border p-1">${createTextField(dayIndex, 'hifdhFaces', '', dayData.hifdhFaces, 'number')}</td>
+            <td class="border p-1">${createTextField(dayIndex, 'hifdhFaces', '', dayData.hifdhFaces, 'number', '0.5')}</td>
             <td class="border p-1">${createTextField(dayIndex, 'murajaaSurah', 'السورة', dayData.murajaaSurah)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'murajaaFrom', 'آية', dayData.murajaaFrom)}</td>
             <td class="border p-1">${createTextField(dayIndex, 'murajaaTo', 'آية', dayData.murajaaTo)}</td>
             <td class="border p-1">${createGradeSelect(dayIndex, 'murajaaGrade', dayData.murajaaGrade)}</td>
-            <td class="border p-1">${createTextField(dayIndex, 'murajaaFaces', '', dayData.murajaaFaces, 'number')}</td>
+            <td class="border p-1">${createTextField(dayIndex, 'murajaaFaces', '', dayData.murajaaFaces, 'number', '0.5')}</td>
             <td class="border p-1">${createTextArea(dayIndex, 'notes', 'ملاحظات', dayData.notes)}</td>
           </tr>`;
         }).join('');
 
         return `<div class="week-table mb-8 border border-gray-400 rounded-lg overflow-hidden" data-week-number="${weekNumber}">
-          <h4 class="font-bold p-2 bg-gray-100 text-center">الأسبوع ${weekNumber}</h4>
+          <h4 class="font-bold p-2 bg-gray-100 text-center flex items-center justify-center gap-4">
+             <input type="checkbox" class="week-checkbox" value="${weekNumber}" title="تحديد هذا الأسبوع للطباعة">
+             <span>الأسبوع ${weekNumber}</span>
+          </h4>
           <div class="block md:hidden">${mobileDayCards}</div>
           <div class="hidden md:block">
             <div class="overflow-x-auto">
@@ -1494,7 +1534,9 @@
 
       calculateAllTotals() {
         if (!this.currentHalaqa || !this.currentHalaqa.students) return;
-        (this.currentHalaqa.students || []).forEach(student => this.captureStudentData(student.id));
+        
+        // No need to capture data again, as it's done on input
+        // (this.currentHalaqa.students || []).forEach(student => this.captureStudentData(student.id));
 
         (this.currentHalaqa.students || []).forEach(student => {
           let totalMemorization = 0, totalReview = 0, totalAttendance = 0, totalAbsence = 0;
@@ -1522,8 +1564,6 @@
         document.getElementById('halaqaTotalAttendance').textContent = halaqaTotals.totalAttendance;
         document.getElementById('halaqaTotalAbsence').textContent = halaqaTotals.totalAbsence;
         document.getElementById('halaqaSummary').classList.remove('hidden');
-
-        this.showMessage('تم حساب جميع المجاميع بنجاح!', 'success');
       }
 
       async createChartImage(config, width, height) {
@@ -1588,12 +1628,15 @@
         </div>`;
       }
 
-      async generateStudentReportAssets(student) {
+      async generateStudentReportAssets(student, selectedWeeks = []) {
         let totalMemorization = 0, totalReview = 0, totalAttendance = 0, totalAbsence = 0;
         let attendanceCounts = { 'حضر': 0, 'غاب': 0, 'مستأذن': 0 };
         let weeklyTotals = { labels: [], hifdh: [], murajaa: [] };
+        
+        const weeksToProcess = (student.data.weeks || []).filter((_, index) => selectedWeeks.length === 0 || selectedWeeks.includes(index + 1));
 
-        (student.data.weeks || []).forEach((week, index) => {
+        weeksToProcess.forEach((week, i) => {
+            const weekNumber = selectedWeeks.length > 0 ? selectedWeeks[i] : i + 1;
             let weeklyHifdh = 0;
             let weeklyMurajaa = 0;
             (week.days || []).forEach(day => {
@@ -1609,7 +1652,7 @@
                 if (day.attendance === 'حضر') totalAttendance++;
                 else if (day.attendance === 'غاب') totalAbsence++;
             });
-            weeklyTotals.labels.push(`الأسبوع ${index + 1}`);
+            weeklyTotals.labels.push(`الأسبوع ${weekNumber}`);
             weeklyTotals.hifdh.push(weeklyHifdh);
             weeklyTotals.murajaa.push(weeklyMurajaa);
         });
@@ -1632,9 +1675,10 @@
             </div>
           </div>`;
 
-        const weeksContentHtml = (student.data.weeks || []).map((weekData, index) => 
-            this.createWeekTableForExport(weekData, index + 1)
-        ).join('');
+        const weeksContentHtml = weeksToProcess.map((weekData, i) => {
+            const weekNumber = selectedWeeks.length > 0 ? selectedWeeks[i] : i + 1;
+            return this.createWeekTableForExport(weekData, weekNumber);
+        }).join('');
 
         const summaryContent = `
           <div class="mt-6 p-4 bg-gray-50 border border-gray-300 rounded-lg">
@@ -1669,7 +1713,10 @@
         const student = this.currentHalaqa.students.find(s => s.id === this.currentStudentId);
         if(!student) return;
 
-        const { summaryContent, attendanceChartImg, progressChartImg, studentInfoHeaderHtml, weeksContentHtml } = await this.generateStudentReportAssets(student);
+        const studentContent = document.getElementById(`content_${this.currentStudentId}`);
+        const selectedWeeks = [...studentContent.querySelectorAll('.week-checkbox:checked')].map(cb => parseInt(cb.value));
+
+        const { summaryContent, attendanceChartImg, progressChartImg, studentInfoHeaderHtml, weeksContentHtml } = await this.generateStudentReportAssets(student, selectedWeeks);
         
         const reportWindow = window.open('', '_blank');
         reportWindow.document.write(`
@@ -1945,6 +1992,65 @@
             setTimeout(() => statusDiv.classList.add('hidden'), 3000);
         }
       }
+
+      previewCertificate() {
+        const studentName = document.getElementById('certStudentName').value || 'اسم الطالب';
+        const reason = document.getElementById('certReason').value || 'لتميزه وتفوقه';
+        const signatory = document.getElementById('certSignatory').value || 'المشرف العام';
+        const template = document.querySelector('input[name="certTemplate"]:checked').value;
+
+        const maleTemplate = `
+            <div class="bg-white p-8 border-[10px] border-double border-yellow-700 aspect-[1.414]">
+                <div class="text-center space-y-4">
+                    <h1 class="text-4xl font-bold text-yellow-800" style="font-family: 'Amiri', serif;">شهادة شكر وتقدير</h1>
+                    <p class="text-xl">تتقدم إدارة الحلقات بجزيل الشكر والتقدير إلى الطالب:</p>
+                    <p class="text-3xl font-bold text-blue-700">${studentName}</p>
+                    <p class="text-xl">${reason}</p>
+                    <p class="text-lg pt-8">سائلين المولى عز وجل له دوام التوفيق والسداد.</p>
+                    <div class="pt-16 text-left">
+                        <p class="text-lg">التوقيع</p>
+                        <p class="text-xl font-bold">${signatory}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        const femaleTemplate = `
+            <div class="bg-white p-8 border-[10px] border-double border-pink-500 aspect-[1.414]">
+                <div class="text-center space-y-4">
+                    <h1 class="text-4xl font-bold text-pink-700" style="font-family: 'Amiri', serif;">شهادة شكر وتقدير</h1>
+                    <p class="text-xl">تتقدم إدارة الدور النسائية بجزيل الشكر والتقدير إلى الطالبة:</p>
+                    <p class="text-3xl font-bold text-purple-700">${studentName}</p>
+                    <p class="text-xl">${reason}</p>
+                    <p class="text-lg pt-8">سائلين المولى عز وجل لها دوام التوفيق والسداد.</p>
+                    <div class="pt-16 text-left">
+                        <p class="text-lg">التوقيع</p>
+                        <p class="text-xl font-bold">${signatory}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('certPreview').innerHTML = template === 'male' ? maleTemplate : femaleTemplate;
+      }
+      
+      printCertificate() {
+        const previewContent = document.getElementById('certPreview').innerHTML;
+        const reportWindow = window.open('', '_blank');
+        reportWindow.document.write(`
+            <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>شهادة شكر وتقدير</title>
+            <script src="https://cdn.tailwindcss.com"><\/script>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+              body { font-family: 'Amiri', serif; }
+            </style>
+            </head><body>
+                ${previewContent}
+                <script>
+                    window.onload = () => { window.print(); }
+                <\/script>
+            </body></html>`);
+        reportWindow.document.close();
+      }
     }
     
     // ============== App Initialization and Global Event Listeners ==============
@@ -1953,10 +2059,12 @@
     // --- View Navigation ---
     document.getElementById('selectMenBtn').addEventListener('click', () => app.selectSection('men'));
     document.getElementById('selectWomenBtn').addEventListener('click', () => app.selectSection('women'));
+    document.getElementById('showCertificatesBtn').addEventListener('click', () => app.showView('certificateView'));
     document.getElementById('backToSectionsBtn').addEventListener('click', () => {
         app.currentSection = null;
         app.showView('selectionView');
     });
+    document.getElementById('backToSectionsFromCertsBtn').addEventListener('click', () => app.showView('selectionView'));
     document.getElementById('backToDashboardBtn').addEventListener('click', () => app.showView('dashboardView'));
     document.getElementById('backToDashboardFromAnalyticsBtn').addEventListener('click', () => app.showView('dashboardView'));
     document.getElementById('backToDashboardFromRosterBtn').addEventListener('click', () => app.showView('dashboardView'));
@@ -1982,6 +2090,16 @@
     document.getElementById('exportAnalyticsBtn').addEventListener('click', () => app.exportAnalyticsToWord());
     document.getElementById('printRosterBtn').addEventListener('click', () => app.printRoster());
     document.getElementById('exportRosterBtn').addEventListener('click', () => app.exportRosterToExcel());
+
+    // --- Certificate View Controls ---
+    document.getElementById('printCertBtn').addEventListener('click', () => app.halaqaManager.printCertificate());
+    document.querySelectorAll('input[name="certTemplate"]').forEach(radio => {
+        radio.addEventListener('change', () => app.halaqaManager.previewCertificate());
+    });
+    ['certStudentName', 'certReason', 'certSignatory'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => app.halaqaManager.previewCertificate());
+    });
+
 
     // --- Dashboard Event Delegation ---
     document.getElementById('dashboardView').addEventListener('click', (e) => {
