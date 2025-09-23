@@ -153,13 +153,17 @@
               </div>
             </div>
 
-            <div id="studentsTabsContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-6">
-                <!-- Student cards will be injected here -->
-            </div>
-            <hr class="mb-6">
-            <div id="studentsContentContainer"></div>
-            <div id="addWeekContainer" class="mt-6">
-                <button id="addWeekBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold w-full sm:w-auto">➕ إضافة أسبوع للطالب الحالي</button>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+                <div class="md:col-span-1 border-l border-gray-200 pl-4">
+                    <h4 class="font-bold mb-3 text-gray-600">قائمة الطلاب</h4>
+                    <div id="studentsTabsContainer" class="space-y-1"></div>
+                </div>
+                <div class="md:col-span-3">
+                    <div id="studentsContentContainer"></div>
+                    <div id="addWeekContainer" class="mt-6">
+                       <button id="addWeekBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold w-full sm:w-auto">➕ إضافة أسبوع للطالب الحالي</button>
+                    </div>
+                </div>
             </div>
           </div>
         </div>
@@ -413,13 +417,10 @@
             freshData = snap.data();
           } else {
             freshData = { men: [], women: [] };
+            console.log("No existing data found. Initializing an empty dataset locally. It will be saved upon first user action.");
           }
           this.appData = { men: freshData.men || [], women: freshData.women || [] };
          
-          if (!snap.exists()) {
-             this.saveData(); 
-          }
-
           if (!this.initialLinkHandled) this.handleDirectLinkAfterDataLoad();
           
           const currentView = document.querySelector('.view.active').id;
@@ -1030,10 +1031,10 @@
             link.href = url;
             link.click();
             URL.revokeObjectURL(url);
-            this.halaqaManager.showMessage('تم تحميل النسخة الاحتياطية بنجاح.', 'success');
+            this.showMessage('تم تحميل النسخة الاحتياطية بنجاح.', 'success');
         } catch (error) {
             console.error("Backup failed:", error);
-            this.halaqaManager.showMessage('فشل تحميل النسخة الاحتياطية.', 'error');
+            this.showMessage('فشل تحميل النسخة الاحتياطية.', 'error');
         }
       }
 
@@ -1057,7 +1058,7 @@
                             async () => {
                                 this.appData = restoredData;
                                 await this.saveData();
-                                this.halaqaManager.showMessage('تمت استعادة البيانات بنجاح!', 'success');
+                                this.showMessage('تمت استعادة البيانات بنجاح!', 'success');
                                 if(this.currentSection) {
                                     this.renderDashboard();
                                 }
