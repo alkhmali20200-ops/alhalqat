@@ -1,0 +1,315 @@
+diff --git a/firestore.rules b/firestore.rules
+index beb965e..8894cd2 100644
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -2,28 +2,9 @@ rules_version = '2';
+ service cloud.firestore {
+   match /databases/{database}/documents {
+ 
+-    // Development only: open read, authenticated write.
++    // يتطلب تسجيل الدخول لأي قراءة أو كتابة
+     match /{document=**} {
+-      allow read: if true;
+-      allow write: if request.auth != null;
++      allow read, write: if request.auth != null;
+     }
+-
+-    // Production example (commented):
+-    // function isAdmin() {
+-    //   return request.auth != null && request.auth.token.role == 'admin';
+-    // }
+-    // function isMember(appId, section, halaqaId) {
+-    //   return request.auth != null &&
+-    //     get(/databases/$(database)/documents/apps/$(appId)/sections/$(section)/halaqas/$(halaqaId)).data.members[request.auth.uid] == true;
+-    // }
+-    // match /apps/{appId}/sections/{section}/halaqas/{halaqaId} {
+-    //   allow read, write: if isAdmin() || isMember(appId, section, halaqaId);
+-    //   match /students/{studentId} {
+-    //     allow read, write: if isAdmin() || isMember(appId, section, halaqaId);
+-    //     match /weeks/{weekId} {
+-    //       allow read, write: if isAdmin() || isMember(appId, section, halaqaId);
+-    //     }
+-    //   }
+-    // }
+   }
+ }
+diff --git a/index.html b/index.html
+index 0bec4b8..373c153 100644
+--- a/index.html
++++ b/index.html
+@@ -2226,18 +2226,9 @@ tbody tr:hover td { background: #fef9e7; }
+ <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+ <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+ <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
++<script src="js/firebase-config.js"></script>
+ <script>
+-// Firebase Configuration
+-const firebaseConfig = {
+-  apiKey: "AIzaSyAsQQ9GGfZ0DmS4V5Fqv49rypXDEeoxCaA",
+-  authDomain: "alhalqat-6ac9d.firebaseapp.com",
+-  databaseURL: "https://alhalqat-6ac9d-default-rtdb.firebaseio.com",
+-  projectId: "alhalqat-6ac9d",
+-  storageBucket: "alhalqat-6ac9d.firebasestorage.app",
+-  messagingSenderId: "680568855745",
+-  appId: "1:680568855745:web:b8adfa8598dfd6d801c840",
+-  measurementId: "G-4L9H2WQS60"
+-};
++// الإعدادات محمّلة من js/firebase-config.js
+ 
+ // Initialize Firebase
+ let database = null;
+@@ -3608,6 +3599,12 @@ localStorage.setItem = function(key, value) {
+ 	      });
+ 	      return !!res.ok;
+ 	    }
++    // حماية XSS: تهريب أي نص قبل إدراجه في HTML
++    const esc = (v) => {
++      const d = document.createElement('div');
++      d.textContent = v != null ? String(v) : '';
++      return d.innerHTML;
++    };
+ 	    const safeFilePart = (v) => compactName(v)
+ 	      .replace(/[^0-9A-Za-z؀-ۿ _-]/g, '')
+ 	      .replace(/\s+/g, '_')
+@@ -4848,7 +4845,7 @@ function copyWeeklyReportToWhatsapp() {
+     const grades = [hifdh?.grade, revision?.grade].filter(Boolean).join(' / ') || '-';
+     const notes = [hifdh?.notes, revision?.notes].filter((n) => String(n || '').trim()).join(' | ') || '-';
+     const attendance = ATTENDANCE.find((a) => a.key === (rollcalls.find((r) => r.studentId === student.id)?.status || ''))?.label || 'غير محضر';
+-    return `${idx + 1}) ${student.name || '-'}\nالحضور: ${attendance}\nالحفظ: ${fmtEntry(hifdh)}\nالمراجعة: ${fmtEntry(revision)}\nالتقدير: ${grades}\nالملاحظات: ${notes}`;
++    return `${idx + 1}) ${esc(student.name || '-')}\nالحضور: ${attendance}\nالحفظ: ${fmtEntry(hifdh)}\nالمراجعة: ${fmtEntry(revision)}\nالتقدير: ${grades}\nالملاحظات: ${notes}`;
+   });
+ 
+   const sectionLabel = halaqa.section === 'womens' ? 'قسم البنات' : 'قسم البنين';
+@@ -6252,7 +6249,7 @@ function getConsecutiveAbsences(studentId, halaqaId) {
+       const sectionText = student.section === 'womens' ? 'البنات' : 'البنين';
+       const halaqaText = h?.circleName || 'بدون حلقة';
+       const idText = compactName(student.nationalId) ? ` • هوية: ${student.nationalId}` : '';
+-      return `${student.name} — ${halaqaText} (${sectionText})${idText}`;
++      return `${esc(student.name)} — ${halaqaText} (${sectionText})${idText}`;
+     }
+ 
+     function createStudent() {
+@@ -6696,7 +6693,7 @@ function getConsecutiveAbsences(studentId, halaqaId) {
+       if (String(s.authUid || '').trim()) {
+         return toast('لا يمكن تغيير اسم المستخدم بعد ربط الحساب بـ Firebase', 'err');
+       }
+-      const next = prompt(`اسم المستخدم الجديد لـ ${s.name}`, s.username || '');
++      const next = prompt(`اسم المستخدم الجديد لـ ${esc(s.name)}`, s.username || '');
+       if (next === null) return;
+       const normalized = normalizeUsername(next);
+       if (!normalized) return toast('اسم مستخدم غير صالح', 'err');
+@@ -6713,7 +6710,7 @@ function getConsecutiveAbsences(studentId, halaqaId) {
+       if (!isAdmin()) return toast('غير مسموح', 'err');
+       const s = state.db.staff.find((x) => x.id === id);
+       if (!s) return toast('الموظف غير موجود', 'err');
+-      const next = prompt(`كلمة المرور الجديدة لـ ${s.name} (${s.username || '-'})`, '');
++      const next = prompt(`كلمة المرور الجديدة لـ ${esc(s.name)} (${s.username || '-'})`, '');
+       if (next === null) return;
+       const password = String(next || '').trim();
+       if (!password || password.length < 6) return toast('كلمة المرور قصيرة (الحد الأدنى 6)', 'err');
+@@ -6936,7 +6933,7 @@ function getConsecutiveAbsences(studentId, halaqaId) {
+ 
+       panel.innerHTML = `
+         <div class="grid grid-4" style="margin-bottom:10px;">
+-          <div class="card"><p class="muted">الطالب</p><div style="font-weight:800; margin-top:6px">${s.name}</div></div>
++          <div class="card"><p class="muted">الطالب</p><div style="font-weight:800; margin-top:6px">${esc(s.name)}</div></div>
+           <div class="card"><p class="muted">الحلقة</p><div style="font-weight:800; margin-top:6px">${h?.circleName || '-'}</div></div>
+           <div class="card"><p class="muted">إجمالي الآيات</p><div class="kpi">${aya}</div></div>
+           <div class="card"><p class="muted">متوسط التقدير</p><div class="kpi">${avg}</div></div>
+@@ -7535,7 +7532,7 @@ function getConsecutiveAbsences(studentId, halaqaId) {
+                   <tbody>
+                     ${rows.map((r) => `
+                       <tr>
+-                        <td>${r.name}</td>
++                        <td>${esc(r.name)}</td>
+                         <td>${r.hifdhCount}</td>
+                         <td>${r.hifdhAya}</td>
+                         <td>${r.revisionCount}</td>
+@@ -7946,7 +7943,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+             <div class="row" style="gap:8px; margin-top:8px; flex-wrap:wrap;">
+               <select class="picker-select" onchange="openEntry(this.value)" style="max-width:320px;">
+                 <option value="">اختيار سريع للطالب</option>
+-                ${students.map((student) => `<option value="${student.id}" ${selected && selected.id === student.id ? 'selected' : ''}>${student.name}</option>`).join('')}
++                ${students.map((student) => `<option value="${student.id}" ${selected && selected.id === student.id ? 'selected' : ''}>${esc(student.name)}</option>`).join('')}
+               </select>
+               <select onchange="setTeacherStudentView(this.value)" class="picker-select" style="max-width:220px;">
+                 <option value="compact" ${state.teacherStudentView === 'compact' ? 'selected' : ''}>عرض سريع للجوال</option>
+@@ -7958,7 +7955,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+           <div class="teacher-student-grid no-print ${state.teacherStudentView === 'cards' || state.teacherStudentView === 'compact' ? '' : 'hidden'} ${state.teacherStudentView === 'compact' ? 'compact-grid' : ''}">
+             ${students.map(student => `
+               <button type="button" class="teacher-student-btn ${selected && selected.id === student.id ? 'active' : ''} ${state.teacherStudentView === 'compact' ? 'compact' : ''}" data-student-id="${student.id}">
+-                <span class="name">${student.name}</span>
++                <span class="name">${esc(student.name)}</span>
+                 <span class="meta">${(ATTENDANCE.find((a) => a.key === (getRollcall(student.id, h.id, viewDate)?.status || ''))?.label || 'غير محضر')} • ${todayEntriesSummary(student.id, viewDate)}</span>
+                 <span class="selected-flag">✓ الطالب المختار</span>
+               </button>
+@@ -7968,7 +7965,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+             <p class="muted" style="font-size:12px; margin-bottom:6px;">قائمة الطلاب</p>
+             <select class="picker-select" onchange="openEntry(this.value)">
+               <option value="">اختر الطالب لفتح بطاقة الإدخال</option>
+-              ${students.map((student) => `<option value="${student.id}" ${selected && selected.id === student.id ? 'selected' : ''}>${student.name}</option>`).join('')}
++              ${students.map((student) => `<option value="${student.id}" ${selected && selected.id === student.id ? 'selected' : ''}>${esc(student.name)}</option>`).join('')}
+             </select>
+           </div>
+         ` : '') : `
+@@ -7984,7 +7981,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+ 	            ${students.map(s => `
+ 	              <div class="card admin-student-card" style="border-color:${selected && selected.id===s.id ? palette.selectedBorder : palette.cardBorder}; background:${selected && selected.id===s.id ? palette.selectedBg : '#fff'};">
+ 	                <div class="admin-student-head">
+-	                  <b>${s.name}</b>
++	                  <b>${esc(s.name)}</b>
+ 	                  ${getStudentAlertHTML(s)}
+ 	                </div>
+ 	                <div class="admin-student-meta">
+@@ -8094,7 +8091,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+           return `
+             <div class="card" style="border-color:#facc15; background:#fffbeb;">
+               <div class="row between" style="margin-bottom:8px;">
+-                <h3>عرض ${s.name} بتاريخ ${viewDate}</h3>
++                <h3>عرض ${esc(s.name)} بتاريخ ${viewDate}</h3>
+                 <span class="badge badge-warn">قراءة فقط</span>
+               </div>
+               <p class="muted" style="font-size:12px; margin-bottom:8px;">يمكنك استعراض بيانات اليوم السابق بدون تعديل. للكتابة اختر "اليوم".</p>
+@@ -8116,7 +8113,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+         return `
+           <div class="card" style="border-color:#86efac; background:#f8fff9;">
+             <div class="row between" style="margin-bottom:8px;">
+-              <h3>تسجيل ${s.name}</h3>
++              <h3>تسجيل ${esc(s.name)}</h3>
+               ${pendingStudentLogs ? `<span class="badge badge-warn">سجلات معلّقة: ${pendingStudentLogs}</span>` : ''}
+             </div>
+             ${remoteMode ? '<p class="muted" style="font-size:12px; margin-bottom:8px;">هذه حلقة عن بعد، تم اختيار الحضور (عن بعد) تلقائياً ويمكن تعديله.</p>' : ''}
+@@ -8221,7 +8218,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+ 
+       return `
+         <div class="card" style="border-color:#86efac; background:#f8fff9;">
+-          <h3 style="margin-bottom:8px;">سجل يومي: ${s.name}</h3>
++          <h3 style="margin-bottom:8px;">سجل يومي: ${esc(s.name)}</h3>
+           <div class="grid grid-4 no-print">
+             <div class="field-block">
+               <div class="field-label">نوع التاريخ</div>
+@@ -8512,8 +8509,8 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+             <tbody>
+               ${rows.map((r) => `
+                 <tr>
+-                  <td>${r.name}</td>
+-                  <td>${r.halaqaName}</td>
++                  <td>${esc(r.name)}</td>
++                  <td>${esc(r.halaqaName)}</td>
+                   <td>${r.hifdhCount}</td>
+                   <td>${r.revisionCount}</td>
+                   <td>${r.latestType}</td>
+@@ -8541,7 +8538,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+         const assignedNames = (s.assignedHalaqaIds || []).map(id => state.db.halaqas.find(h => h.id===id)?.circleName).filter(Boolean);
+         return `
+           <div class="card">
+-            <div class="row between"><b>${s.name}</b><span class="badge">${s.role}</span></div>
++            <div class="row between"><b>${esc(s.name)}</b><span class="badge">${s.role}</span></div>
+             ${admin ? `<p class="muted" style="font-size:12px; margin-top:6px;">${s.phone}</p>` : ''}
+             <p class="muted" style="font-size:12px;">المستخدم: <span dir="ltr">${escapeAttr(s.username || '-')}</span></p>
+             <p class="muted" style="font-size:12px;">توثيق Firebase: ${s.authUid ? 'مفعل' : 'غير مفعل'}</p>
+@@ -8563,7 +8560,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+       const teacherOpts = ['<option value="">اختر المعلم</option>']
+         .concat(state.db.staff
+           .filter(s => s.role === 'teacher' && s.section === state.section)
+-          .map(s => `<option value="${s.id}">${s.name} (${s.section==='mens'?'بنين':'بنات'})</option>`))
++          .map(s => `<option value="${s.id}">${esc(s.name)} (${s.section==='mens'?'بنين':'بنات'})</option>`))
+         .join('');
+       $('assignTeacher').innerHTML = teacherOpts;
+       const halaqaOpts = ['<option value="">اختر الحلقة</option>']
+@@ -9089,7 +9086,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+               <tbody>${snap.topRows.map((r, idx) => `
+                 <tr>
+                   <td>${idx + 1}</td>
+-                  <td><b>${r.halaqaName}</b></td>
++                  <td><b>${esc(r.halaqaName)}</b></td>
+                   <td><span class="badge ${r.section === 'mens' ? 'badge-green' : 'badge-warn'}">${r.section === 'mens' ? 'بنين' : 'بنات'}</span></td>
+                   <td>${r.teacherName}</td>
+                   <td><b>${r.faces}</b></td>
+@@ -9104,7 +9101,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+       $('boardActionsNeeded').innerHTML = `
+         <div class="board-action-list">
+           <div class="board-action-item warn"><b>حالات التعثر المبكر:</b> ${riskCount}</div>
+-          ${snap.risks.slice(0, 6).map(r => `<div class="board-action-item warn">${r.name} - ${r.halaqaName} (${r.reasons.join('، ')})</div>`).join('') || '<p class="muted">لا توجد حالات تعثر حالياً.</p>'}
++          ${snap.risks.slice(0, 6).map(r => `<div class="board-action-item warn">${esc(r.name)} - ${esc(r.halaqaName)} (${r.reasons.join('، ')})</div>`).join('') || '<p class="muted">لا توجد حالات تعثر حالياً.</p>'}
+           <div class="board-action-item info"><b>حلقات بسجل يومي ناقص:</b> ${missingCount}</div>
+           ${snap.missing.slice(0, 6).map(m => `<div class="board-action-item info">${m.halaqaName} - ناقص ${m.missing} طالب</div>`).join('') || '<p class="muted">السجلات اليومية مكتملة اليوم.</p>'}
+         </div>
+@@ -9133,7 +9130,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+       const topRowsHtml = snap.topRows.map((r, idx) => `
+         <tr>
+           <td>${idx + 1}</td>
+-          <td>${r.halaqaName}</td>
++          <td>${esc(r.halaqaName)}</td>
+           <td>${r.section === 'mens' ? 'بنين' : 'بنات'}</td>
+           <td>${r.teacherName}</td>
+           <td>${r.faces}</td>
+@@ -9141,7 +9138,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+           <td>${r.avg}</td>
+         </tr>
+       `).join('');
+-      const riskRows = snap.risks.map((r, idx) => `<li>${idx + 1}. ${r.name} - ${r.halaqaName} (${r.reasons.join('، ')})</li>`).join('');
++      const riskRows = snap.risks.map((r, idx) => `<li>${idx + 1}. ${esc(r.name)} - ${esc(r.halaqaName)} (${r.reasons.join('، ')})</li>`).join('');
+       const missingRows = snap.missing.map((m, idx) => `<li>${idx + 1}. ${m.halaqaName} - ناقص ${m.missing} طالب</li>`).join('');
+       w.document.write(`
+         <html lang="ar" dir="rtl">
+@@ -12206,9 +12203,9 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+               <div class="knight-row">
+                 <div class="row" style="min-width:0; flex-wrap:nowrap;">
+                   <span class="knight-rank" style="${rankStyle}">${i + 1}</span>
+-                  ${k.photo ? `<img src="${k.photo}" alt="${k.name}" style="width:42px;height:42px;border-radius:10px;object-fit:cover;border:1px solid ${section === 'mens' ? '#93c5fd' : '#f9a8d4'};" />` : ''}
++                  ${k.photo ? `<img src="${k.photo}" alt="${esc(k.name)}" style="width:42px;height:42px;border-radius:10px;object-fit:cover;border:1px solid ${section === 'mens' ? '#93c5fd' : '#f9a8d4'};" />` : ''}
+                   <div style="min-width:0;">
+-                    <b style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${k.name}</b>
++                    <b style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(k.name)}</b>
+                     <span class="muted" style="font-size:12px;">${h?.circleName || '-'}</span>
+                   </div>
+                 </div>
+@@ -12251,9 +12248,9 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+           <p class="badge badge-gold">وثيقة نشر</p>
+           <h4>فارس الأسبوع - ${sectionLabel}</h4>
+           <div class="row" style="margin-top:8px;">
+-            ${top.photo ? `<img src="${top.photo}" alt="${top.name}" />` : '<div style="width:74px;height:74px;border-radius:14px;border:2px solid #d4af37;background:#f1f5f9;"></div>'}
++            ${top.photo ? `<img src="${top.photo}" alt="${esc(top.name)}" />` : '<div style="width:74px;height:74px;border-radius:14px;border:2px solid #d4af37;background:#f1f5f9;"></div>'}
+             <div style="min-width:0;">
+-              <div class="hero-name">${top.name}</div>
++              <div class="hero-name">${esc(top.name)}</div>
+               <div class="meta">المجموع: <b>${top.score}</b> نقطة</div>
+               <div class="meta">${(state.indexes?.halaqaById?.[top.halaqaId]?.circleName) || '-'}</div>
+             </div>
+@@ -12379,7 +12376,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+         ctx.font = '700 30px Tajawal, Amiri, sans-serif';
+         topThree.forEach((k, i) => {
+           ctx.fillStyle = i === 0 ? '#a16207' : '#14532d';
+-          ctx.fillText(`${i + 1}. ${k.name} - ${k.score} نقطة`, 540, 836 + (i * 48));
++          ctx.fillText(`${i + 1}. ${esc(k.name)} - ${k.score} نقطة`, 540, 836 + (i * 48));
+         });
+ 
+         ctx.fillStyle = '#334155';
+@@ -12424,7 +12421,7 @@ function getStudentAlertHTML(s) { const issues = studentIssues(s, state.db.stude
+             const h = state.db.halaqas.find(x => x.id === k.halaqaId);
+             return `
+               <button class="parent-student-btn ${state.currentParentStudentId === k.id ? 'active' : ''}" onclick="selectParentStudent('${k.id}')">
+-                <div style="font-size:15px; font-weight:800;">${k.name}</div>
++                <div style="font-size:15px; font-weight:800;">${esc(k.name)}</div>
+                 <div class="muted" style="font-size:12px; margin-top:4px;">${h?.circleName || 'بدون حلقة'} • ${k.section === 'mens' ? 'البنين' : 'البنات'}</div>
+               </button>
+             `;
+diff --git a/js/firebase-config.js b/js/firebase-config.js
+new file mode 100644
+index 0000000..4d47d2f
+--- /dev/null
++++ b/js/firebase-config.js
+@@ -0,0 +1,12 @@
++// إعدادات Firebase - ملف منفصل
++// ملاحظة: مفتاح API في المتصفح طبيعي، الأمان من Firestore Rules + Auth
++const firebaseConfig = {
++  apiKey: "AIzaSyAsQQ9GGfZ0DmS4V5Fqv49rypXDEeoxCaA",
++  authDomain: "alhalqat-6ac9d.firebaseapp.com",
++  databaseURL: "https://alhalqat-6ac9d-default-rtdb.firebaseio.com",
++  projectId: "alhalqat-6ac9d",
++  storageBucket: "alhalqat-6ac9d.firebasestorage.app",
++  messagingSenderId: "680568855745",
++  appId: "1:680568855745:web:b8adfa8598dfd6d801c840",
++  measurementId: "G-4L9H2WQS60"
++};
