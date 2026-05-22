@@ -1,0 +1,27 @@
+# ملفات البيئة - لا تُرفع أبداً
+.env
+.env.local
+.env.*.local
+
+# ملفات النظام
+.DS_Store
+Thumbs.db
+
+# ملفات المحرر
+.vscode/
+.idea/
+*.swp
+
+# Node.js (إذا استُخدم مستقبلاً)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ملفات البناء
+dist/
+build/
+.cache/
+
+# ملفات النسخ الاحتياطي المحلية (احفظها في مكان آمن، لا في GitHub)
+*.json.backup
+*_backup_*.json
