@@ -36,25 +36,35 @@
     .action-btn:hover { transform: scale(1.1); }
   </style>
 
-  <!-- تهيئة Firebase: يجب وضعها قبل سكربت التطبيق -->
+  <!-- إعدادات Firebase من ملف منفصل (لا تضعها هنا مباشرة) -->
+  <script src="js/config.js"></script>
   <script>
-    // تم تحديث هذه البيانات بناءً على المعلومات التي قدمتها
-    window.__firebase_config = JSON.stringify({
-      apiKey: "AIzaSyAsQQ9GGfZ0DmS4V5Fqv49rypXDEeoxCaA",
-      authDomain: "alhalqat-6ac9d.firebaseapp.com",
-      projectId: "alhalqat-6ac9d",
-      storageBucket: "alhalqat-6ac9d.firebasestorage.app",
-      messagingSenderId: "68056885745",
-      appId: "1:680568855745:web:b8adfa8598dfd6d801c840",
-      measurementId: "G-4L9H2WQS60"
-    });
-    // تم تحديث معرف التطبيق لمسار Firestore
-    window.__app_id = "alhalqat-6ac9d";
+    // توافق مع الكود القديم
+    window.__firebase_config = JSON.stringify(window.__firebase_config_obj);
     // اختياري: إذا توفر توكن مصادقة مخصص
     // window.__initial_auth_token = "YOUR_CUSTOM_TOKEN";
   </script>
 </head>
-<body class="bg-gray-100 p-4">
+<body class="bg-gray-100">
+  <!-- شريط التنقل العلوي -->
+  <nav class="bg-green-800 text-white px-4 py-2 flex justify-between items-center no-print shadow-md">
+    <div class="flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+      </svg>
+      <span class="font-bold text-sm sm:text-base">نظام إدارة حلقات القرآن</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="firebase-status" class="text-green-200 text-xs hidden sm:block"></span>
+      <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        خروج
+      </button>
+    </div>
+  </nav>
+  <div class="p-4">
 
   <!-- App Container -->
   <div class="container mx-auto max-w-7xl bg-white shadow-lg rounded-lg p-6">
@@ -68,7 +78,7 @@
         <button id="selectWomenBtn" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 px-10 rounded-lg text-xl shadow-lg transition-transform transform hover:scale-105">قسم النساء</button>
         <button id="showCertificatesBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-10 rounded-lg text-xl shadow-lg transition-transform transform hover:scale-105">شهادات الشكر</button>
       </div>
-      <p id="firebase-status" class="mt-8 text-gray-400 text-sm">جاري تهيئة التطبيق...</p>
+      <p class="mt-8 text-gray-400 text-sm">جاري تحميل النظام...</p>
     </div>
 
     <!-- View 2: Halaqa Dashboard -->
@@ -349,7 +359,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     // ============== AppManager ==============
     class AppManager {
@@ -384,17 +394,26 @@
           const app = initializeApp(firebaseConfig);
           this.db = getFirestore(app);
           const auth = getAuth(app);
-          
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            try {
-              await signInWithCustomToken(auth, __initial_auth_token);
-            } catch (tokenError) {
-              console.warn("Custom token sign-in failed, falling back to anonymous sign-in.", tokenError);
-              await signInAnonymously(auth);
-            }
-          } else {
-            await signInAnonymously(auth);
-          }
+
+          // حارس الأمان: إذا لم يكن المستخدم مسجلاً، أعده لصفحة الدخول
+          await new Promise((resolve) => {
+            onAuthStateChanged(auth, (user) => {
+              if (!user) {
+                window.location.replace('index.html');
+              } else {
+                document.getElementById('firebase-status').textContent = `مرحباً · ${user.email}`;
+                // زر تسجيل الخروج
+                const logoutBtn = document.getElementById('logoutBtn');
+                if (logoutBtn) {
+                  logoutBtn.addEventListener('click', async () => {
+                    await signOut(auth);
+                    window.location.replace('index.html');
+                  });
+                }
+                resolve(user);
+              }
+            });
+          });
 
           document.getElementById('firebase-status').textContent = 'متصل بقاعدة البيانات ✅';
           this.listenForDataChanges(this.appId);
@@ -2141,6 +2160,7 @@
     });
 
   </script>
+  </div><!-- نهاية div الـ padding -->
 </body>
 </html>
 
